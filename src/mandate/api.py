@@ -149,6 +149,11 @@ class UnseenDocumentRequest(BaseModel):
     content: str
     target_control_id: Optional[str] = None
 
+class TaskLeaseRequest(BaseModel):
+    task_id: str
+    agent_id: str
+    duration_ms: Optional[int] = 15000
+
 # -------------------------------------------------------------
 # AUTHENTICATION & APPROVAL ENDPOINTS
 # -------------------------------------------------------------
@@ -240,6 +245,25 @@ def approve_proposal(
     )
     if not res.get("success"):
         raise HTTPException(status_code=400, detail=res)
+    return res
+
+@app.post("/api/v1/tenant/task/lease")
+def acquire_lease_endpoint(
+    req: TaskLeaseRequest,
+    tenant_id: str = Depends(get_tenant_from_session_or_key),
+    _csrf: None = Depends(verify_csrf_write_protection)
+):
+    """
+    Acquires or renews a task lease with atomic monotonic fencing token.
+    """
+    res = tools.acquire_task_lease(
+        tenant_id=tenant_id,
+        task_id=req.task_id,
+        agent_id=req.agent_id,
+        lease_duration_ms=req.duration_ms or 15000
+    )
+    if not res:
+        raise HTTPException(status_code=409, detail={"success": False, "reason": "LEASE_ACQUISITION_FAILED_OR_LOCKED"})
     return res
 
 # -------------------------------------------------------------

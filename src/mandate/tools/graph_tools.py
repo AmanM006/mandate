@@ -267,7 +267,8 @@ class GraphTools:
         MERGE (a)-[:APPROVES_PROPOSAL]->(p)
         SET p.status = 'APPROVED',
             p.approved_by = $reviewer_id,
-            p.approved_at = $created_at
+            p.approved_at = $created_at,
+            p.mutation_sig = $mutation_sig
         RETURN a.token, a.expires_at
         """
         g.query(q_create, {
@@ -394,6 +395,7 @@ class GraphTools:
         WHERE t.status = 'IN_PROGRESS'
           AND t.owner_agent = $agent_id
           AND t.lease_version = $fence_token
+          AND (t.lease_expires_at IS NULL OR t.lease_expires_at >= timestamp())
           AND p.status = 'APPROVED'
           AND ev.evidence_revision = p.evidence_revision
           AND ($expected_rev IS NULL OR p.evidence_revision = $expected_rev)
@@ -401,6 +403,7 @@ class GraphTools:
           AND a.tenant_id = $tenant_id
           AND a.expires_at >= timestamp()
           AND a.evidence_revision = p.evidence_revision
+          AND (a.mutation_sig IS NULL OR p.mutation_sig IS NULL OR a.mutation_sig = p.mutation_sig)
         SET a.used = true,
             a.consumed_at = timestamp(),
             t.idempotency_key = $idempotency_key,

@@ -91,11 +91,32 @@ def run_agent_session_b():
     ev_rev = res_prop[0][1]
     print(f"[{session_id}] Successfully created {fresh_prop_id} bound to evidence revision {ev_rev}.")
 
-    # 6. Request and obtain authenticated officer approval
-    print(f"[{session_id}] Submitting proposal to authenticated officer review flow...")
-    appr = tools.create_proposal_approval("aetherlearn", fresh_prop_id, "officer_alice", ["aetherlearn"])
-    assert appr["approval_token"] is not None
-    print(f"[{session_id}] Obtained officer approval: {appr['approval_token'][:25]}...")
+    # 6. Request and obtain authenticated officer approval via HTTP API session
+    # Simulates genuine human compliance officer review flow:
+    # Officer Alice logs in, reviews proposal parameters & evidence, and signs the ApprovalRecord.
+    print(f"[{session_id}] Submitting proposal to authenticated officer review flow (Officer Alice via API)...")
+    from fastapi.testclient import TestClient
+    from src.mandate.api import app as fastapi_app
+    api_client = TestClient(fastapi_app)
+
+    # Alice authenticates
+    login_res = api_client.post(
+        "/api/v1/auth/login",
+        json={"username": "officer_alice", "password": "alice_secret_compliance_2026", "tenant_id": "aetherlearn"}
+    )
+    assert login_res.status_code == 200, f"Officer login failed: {login_res.text}"
+    alice_csrf = login_res.json()["csrf_token"]
+
+    # Alice reviews and signs proposal
+    appr_resp = api_client.post(
+        "/api/v1/tenant/proposal/approve",
+        headers={"x-csrf-token": alice_csrf},
+        json={"proposal_id": fresh_prop_id, "duration_sec": 300}
+    )
+    assert appr_resp.status_code == 200, f"Officer approval rejected: {appr_resp.text}"
+    appr = appr_resp.json()
+    assert appr.get("approval_token") is not None
+    print(f"[{session_id}] Authenticated Officer Alice issued ApprovalRecord: {appr['approval_token'][:25]}...")
 
     # 7. Execute Remediation Patch: Apply allowlisted configuration via Atomic Cypher
     print(f"[{session_id}] Applying remediation patch via strict atomic Cypher write...")
@@ -144,8 +165,10 @@ def run_agent_session_b():
     print(f"[{session_id}] Dynamically Calculated Revised Verdict: {computed_verdict} (Previous: {prior_verdict})")
 
     # 9. Persist Revised Assessment Conclusion into FalkorDB with SUPERSEDES edge
+    # Matches the existing conclusion node from Session A with tenant binding (does not CREATE duplicate prior node)
     q_persist_revised = """
     MATCH (clm:Claim {claim_id: 'CLM_VPC_01', tenant_id: 'aetherlearn'})
+    MATCH (prior:AssessmentConclusion {conclusion_id: $prev_cid, tenant_id: 'aetherlearn'})
     CREATE (c:AssessmentConclusion {
         conclusion_id: $cid,
         tenant_id: 'aetherlearn',
@@ -159,7 +182,7 @@ def run_agent_session_b():
         status: 'ACTIVE_RECORD'
     })
     CREATE (c)-[:REVISED_EVALUATION_OF]->(clm)
-    CREATE (c)-[:SUPERSEDES]->(prior:AssessmentConclusion {conclusion_id: $prev_cid})
+    CREATE (c)-[:SUPERSEDES]->(prior)
     SET clm.status = $verdict,
         clm.is_stale = false
     RETURN c.conclusion_id, c.verdict

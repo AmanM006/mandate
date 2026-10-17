@@ -201,21 +201,25 @@
         let csrfToken = null;
 
         async function ensureAuth() {
-            let meRes = await fetch('/api/v1/auth/me');
-            let meData = await meRes.json();
-            if (!meData.authenticated) {
-                const loginRes = await fetch('/api/v1/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: "officer_alice", password: "alice_secret_compliance_2026" })
-                });
-                meData = await loginRes.json();
+            try {
+                let meRes = await fetch('/api/v1/auth/me');
+                let meData = await meRes.json();
+                if (!meData.authenticated) {
+                    const loginRes = await fetch('/api/v1/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: "officer_alice", password: "alice_secret_compliance_2026" })
+                    });
+                    meData = await loginRes.json();
+                }
+                csrfToken = meData.csrf_token;
+                if (document.getElementById('authUserName')) {
+                    document.getElementById('authUserName').innerText = meData.name || meData.username;
+                }
+                return meData;
+            } catch (err) {
+                console.error("Auth initialization error:", err);
             }
-            csrfToken = meData.csrf_token;
-            if (document.getElementById('authUserName')) {
-                document.getElementById('authUserName').innerText = meData.name || meData.username;
-            }
-            return meData;
         }
 
         async function switchTenant(tenantId) {
@@ -236,13 +240,14 @@
         }
 
         async function refreshState() {
+            await ensureAuth();
             const res = await fetch('/api/v1/tenant/state');
             const data = await res.json();
             
             // Set dropdown value
             document.getElementById('tenantSelect').value = data.tenant_id;
 
-            // Render Contradictions
+            // Render Contradictions matching traverse_contradictions record structure
             const contBox = document.getElementById('contradictionsContainer');
             if (!data.contradictions || data.contradictions.length === 0) {
                 contBox.innerHTML = '<div class="text-xs text-emerald-400 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">No active contradictions found for this tenant namespace. Zero leakage.</div>';
@@ -250,12 +255,12 @@
                 contBox.innerHTML = data.contradictions.map(c => `
                     <div class="p-3 bg-slate-950 border border-rose-500/30 rounded-lg space-y-1.5">
                         <div class="flex justify-between items-center">
-                            <span class="text-xs font-mono text-rose-400 font-semibold">[!] CONFLICT DETECTED: ${c.control_name}</span>
+                            <span class="text-xs font-mono text-rose-400 font-semibold">[!] CONFLICT DETECTED: ${c.bypassed_control || c.active_control || 'Control Gate'}</span>
                             <span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-mono">DEGRADED_BYPASSED</span>
                         </div>
-                        <div class="text-xs text-slate-300">Target Endpoint: <span class="font-mono text-emerald-400">${c.data_flow_endpoint}</span></div>
-                        <div class="text-xs text-slate-400">Supporting Policy: <span class="text-slate-200">${c.supporting_evidence.join(', ')}</span></div>
-                        <div class="text-xs text-rose-300/90">Contradictory Source: <span class="text-rose-200 font-mono">${c.contradictory_evidence.join(', ')}</span></div>
+                        <div class="text-xs text-slate-300">Target Endpoint: <span class="font-mono text-emerald-400">${c.endpoint}</span> (${c.category || 'Personal Data'})</div>
+                        <div class="text-xs text-slate-400">Supporting Evidence: <span class="text-slate-200">${(c.supporting_evidence || []).join(', ') || 'N/A'}</span></div>
+                        <div class="text-xs text-rose-300/90">Contradictory Source: <span class="text-rose-200 font-mono">${(c.contradictory_evidence || []).join(', ') || 'N/A'}</span></div>
                     </div>
                 `).join('');
             }
@@ -266,7 +271,7 @@
                 <div class="p-2 border border-slate-800 rounded bg-slate-900/50">
                     <div class="flex justify-between">
                         <span class="text-slate-200 font-bold">${clm.claim_id} (${clm.provision_id})</span>
-                        <span class="px-1.5 py-0.5 rounded text-[10px] ${clm.status === 'VALID_ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${clm.status}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] ${clm.status === 'VALID_ACTIVE' || clm.status === 'MODELED_CONTROL_TESTS_PASS' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${clm.status}</span>
                     </div>
                     <div class="text-slate-400 text-[11px] mt-1">${clm.assertion}</div>
                     ${clm.invalidation_history && clm.invalidation_history.length > 0 ? `
@@ -290,6 +295,21 @@
                     <span>Active Bypasses: <b class="${bypassClass}">${bypassCount}</b></span>
                 </div>
             `;
+
+            // Detect active proposal ID
+            let activePropId = "PROP_REMED_01";
+            let activeTaskId = "TSK_REMED_01";
+            if (data.tasks && data.tasks.length > 0) {
+                const targetTask = data.tasks.find(t => t.proposal && t.proposal.status !== 'APPLIED_COMMITTED') || data.tasks[0];
+                if (targetTask) {
+                    activeTaskId = targetTask.task_id;
+                    if (targetTask.proposal) {
+                        activePropId = targetTask.proposal.proposal_id;
+                    }
+                }
+            }
+            window.__activeProposalId = activePropId;
+            window.__activeTaskId = activeTaskId;
 
             // Refresh Behavioral Suite
             refreshBehavioralSuite();
@@ -323,9 +343,38 @@
             const btn = document.getElementById('applyPatchBtn');
             const resBox = document.getElementById('patchResultBox');
             btn.disabled = true;
-            btn.innerText = "Requesting Server-Signed ApprovalRecord...";
+            btn.innerText = "Acquiring Task Lease with Monotonic Fencing Token...";
 
-            // 1. Server generates single-use ApprovalRecord bound to current reviewer
+            const targetTaskId = window.__activeTaskId || "TSK_REMED_01";
+            const targetPropId = window.__activeProposalId || "PROP_REMED_01";
+
+            // 1. Acquire task lease via server API
+            const leaseResp = await fetch('/api/v1/tenant/task/lease', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    task_id: targetTaskId,
+                    agent_id: "agent_worker_console",
+                    duration_ms: 15000
+                })
+            });
+            const leaseData = await leaseResp.json();
+            if (!leaseResp.ok) {
+                resBox.className = "p-3 rounded-lg text-xs font-mono bg-rose-500/10 text-rose-300 border border-rose-500/30";
+                resBox.style.display = "block";
+                resBox.innerText = "Task Lease Acquisition Failed: " + JSON.stringify(leaseData, null, 2);
+                btn.disabled = false;
+                btn.innerText = "Authorize & Apply Guarded Patch";
+                return;
+            }
+
+            const fenceToken = leaseData.fence_token;
+            btn.innerText = "Requesting Server-Signed ApprovalRecord from Officer Alice...";
+
+            // 2. Server generates single-use ApprovalRecord bound to current reviewer
             const apprResp = await fetch('/api/v1/tenant/proposal/approve', {
                 method: 'POST',
                 headers: { 
@@ -333,7 +382,7 @@
                     'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({
-                    proposal_id: "PROP_REMED_01",
+                    proposal_id: targetPropId,
                     duration_sec: 300
                 })
             });
@@ -343,18 +392,12 @@
                 resBox.style.display = "block";
                 resBox.innerText = "Approval Authorization Failed: " + JSON.stringify(apprData, null, 2);
                 btn.disabled = false;
-                btn.innerText = "Authorize & Apply Single-Query Remediation";
+                btn.innerText = "Authorize & Apply Guarded Patch";
                 return;
             }
 
             const approvalToken = apprData.approval_token;
             btn.innerText = "Executing Single-Query Atomic Cypher Mutation...";
-
-            // 2. Fetch current task lease
-            const leaseResp = await fetch('/api/v1/tenant/state');
-            const state = await leaseResp.json();
-            const task = (state.tasks || []).find(t => t.task_id === 'TSK_REMED_01');
-            const fence = (task ? task.fence_token : 0) + 1;
 
             // 3. Post atomic patch
             const res = await fetch('/api/v1/tenant/apply-patch', {
@@ -364,10 +407,10 @@
                     'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({
-                    task_id: "TSK_REMED_01",
-                    proposal_id: "PROP_REMED_01",
-                    agent_id: "agent_worker_beta",
-                    fence_token: fence,
+                    task_id: targetTaskId,
+                    proposal_id: targetPropId,
+                    agent_id: "agent_worker_console",
+                    fence_token: fenceToken,
                     idempotency_key: "IDEM-CONSOLE-" + Date.now(),
                     human_approval_token: approvalToken,
                     expected_evidence_revision: "REV_EV_ENG_8419_v1"

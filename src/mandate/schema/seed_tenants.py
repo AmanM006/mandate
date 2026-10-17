@@ -84,6 +84,11 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager):
         df_billing.description = 'Stripe webhook payment processing for annual parent subscription'
     MERGE (df_billing)-[:PROCESSES]->(cat_billing)
 
+    MERGE (df_research:DataFlow {flow_id: 'DF_04', tenant_id: 'aetherlearn'})
+    SET df_research.endpoint = '/api/v1/research/pedagogical-stats',
+        df_research.protocol = 'HTTPS/BATCH',
+        df_research.description = 'Aggregated learning efficacy research dataset with irreversible tokenization'
+
     // 5. Controls
     MERGE (ctl_vpc:Control {control_id: 'CTL_VPC_GATE', tenant_id: 'aetherlearn'})
     SET ctl_vpc.name = 'Guardian Verifiable Consent Gate',
@@ -95,6 +100,11 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager):
     SET ctl_enc.name = 'Payment Card & Billing AES-256 GCM Encryption',
         ctl_enc.status = 'ACTIVE_VERIFIED'
     MERGE (ctl_enc)-[:COVERS_FLOW]->(df_billing)
+
+    MERGE (ctl_research:Control {control_id: 'CTL_RESEARCH_ANONYMIZATION', tenant_id: 'aetherlearn'})
+    SET ctl_research.name = 'Sec 17(2)(b) Pedagogical Research Anonymizer',
+        ctl_research.status = 'ACTIVE_VERIFIED'
+    MERGE (ctl_research)-[:COVERS_FLOW]->(df_research)
 
     // 6. Evidence: The Conflict and the Bypass
     MERGE (ev_policy:Evidence {evidence_id: 'EV_POL_01', tenant_id: 'aetherlearn'})

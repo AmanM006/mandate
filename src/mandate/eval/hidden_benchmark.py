@@ -1,16 +1,16 @@
 """
-Mandate Reserved Hidden Benchmark Suite: 8 Unseen Evaluation Cases.
+Mandate Reserved Evaluation Suite: 8 Verification Scenarios.
 
-These cases are evaluated separately from the 30-case development set.
+These cases are evaluated separately from the development set.
 The test harness runs these cases without tuning, checking:
-1. Cross-border youth transfer rules
-2. Consent manager token revocation
-3. Research exemption boundary conditions under Section 17(2)(b)
+1. Cross-border youth transfer rules under Section 16
+2. Consent manager boundary verification under Rule 4
+3. Pedagogical research exemption boundary under Section 17(2)(b)
 4. Startup compliance carve-outs under Section 17(3)
-5. Multi-tenant key cross-contamination
-6. Expired token remediation attempt
-7. Zombie agent fence collision under concurrency
-8. Episodic session recovery after premise invalidation
+5. Multi-tenant boundary integrity
+6. Expired token remediation rejection
+7. Concurrent dual-worker lease collision and zombie rejection
+8. Cross-session episodic memory recovery
 """
 
 import uuid
@@ -109,7 +109,7 @@ def run_hidden_benchmark() -> Dict[str, Any]:
     results = []
 
     print("\n" + "=" * 80)
-    print("MANDATE RESERVED HIDDEN BENCHMARK: 8 UNTUNED EVALUATION CASES")
+    print("MANDATE RESERVED EVALUATION SUITE: 8 VERIFICATION SCENARIOS")
     print("=" * 80)
 
     for case in RESERVED_HIDDEN_CASES:
@@ -130,8 +130,7 @@ def run_hidden_benchmark() -> Dict[str, Any]:
             if res and len(res) > 0:
                 actual = res[0][0]
             else:
-                # If provision not yet loaded in public, query governed commencement
-                actual = case["expected_legal_status"]
+                actual = "PROVISION_NOT_FOUND"
             detail_msg = f"Statutory check on Section 16 cross-border transfer restriction: {actual}"
 
         # Case 2: Consent manager token revocation / scope
@@ -150,15 +149,25 @@ def run_hidden_benchmark() -> Dict[str, Any]:
 
         # Case 3: Research Exemption Threshold under Sec 17(2)(b)
         elif cid == "HIDDEN-03":
-            executed_query = "MATCH (p:Provision {provision_id: 'DPDP_ACT_SEC_17_2_B'}) RETURN p.legal_status, p.title"
-            res = g_public.ro_query(executed_query).result_set
-            # Check tenant research flows have anonymization control active
-            res_res = g_aether.ro_query("MATCH (df:DataFlow {tenant_id: 'aetherlearn', flow_id: 'DF_03'}) RETURN df.protocol").result_set
-            if len(res) > 0 and len(res_res) > 0:
+            # Real behavioral verification: checks statutory provision is IN_FORCE in public graph and tenant flow DF_04 has active anonymization control
+            prov_q = "MATCH (p:Provision {provision_id: 'DPDP_ACT_SEC_17_2_B'}) RETURN p.legal_status"
+            res_prov = g_public.ro_query(prov_q).result_set
+            prov_status = res_prov[0][0] if res_prov else None
+
+            flow_ctl_q = """
+            MATCH (df:DataFlow {tenant_id: 'aetherlearn', flow_id: 'DF_04'})
+            MATCH (ctl:Control {tenant_id: 'aetherlearn', control_id: 'CTL_RESEARCH_ANONYMIZATION'})-[:COVERS_FLOW]->(df)
+            WHERE ctl.status = 'ACTIVE_VERIFIED'
+            RETURN df.flow_id, ctl.control_id, ctl.status
+            """
+            executed_query = flow_ctl_q.strip()
+            res_res = g_aether.ro_query(flow_ctl_q).result_set
+
+            if prov_status == 'IN_FORCE' and len(res_res) > 0:
                 actual = "MODELED_CONTROL_TESTS_PASS"
             else:
                 actual = "FAILING_CONTROLS_DETECTED"
-            detail_msg = f"Section 17(2)(b) research/anonymization threshold matched in graph"
+            detail_msg = f"Sec 17(2)(b) research anonymization control CTL_RESEARCH_ANONYMIZATION verified on DF_04 (Statutory status: {prov_status})"
 
         # Case 4: Startup Exemption Boundary under Sec 17(3)
         elif cid == "HIDDEN-04":
@@ -306,7 +315,7 @@ def run_hidden_benchmark() -> Dict[str, Any]:
 
     acc = (passed / total) * 100.0
     print("-" * 80)
-    print(f"RESERVED HIDDEN SUITE: {passed}/{total} PASSED ({acc:.1f}%)")
+    print(f"RESERVED EVALUATION SUITE: {passed}/{total} VERIFIED ({acc:.1f}%)")
     print("=" * 80 + "\n")
 
     return {

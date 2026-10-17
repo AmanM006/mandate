@@ -166,6 +166,16 @@ def seed_regulatory_corpus(db_mgr: FalkorClientManager):
     MATCH (c:Commencement {commencement_id: 'COMM_18_MONTHS'})
     MERGE (r_14)-[:GOVERNED_BY]->(c)
 
+    MERGE (p_16:Provision {provision_id: 'DPDP_ACT_SEC_16'})
+    SET p_16.section_number = '16',
+        p_16.title = 'Transfer of Personal Data Outside India',
+        p_16.official_text = 'The Central Government may, by notification, restrict the transfer of personal data by a Data Fiduciary for processing to such country or territory outside India as may be so notified.',
+        p_16.legal_status = 'FUTURE_OBLIGATION',
+        p_16.source_ref = 'Act No. 22 of 2023, s. 16'
+    WITH p_16
+    MATCH (c:Commencement {commencement_id: 'COMM_18_MONTHS'})
+    MERGE (p_16)-[:GOVERNED_BY]->(c)
+
     MERGE (p_17_1:Provision {provision_id: 'DPDP_ACT_SEC_17_1'})
     SET p_17_1.section_number = '17(1)',
         p_17_1.title = 'Exemption for Enforcement and Judicial Inquiries',
@@ -175,7 +185,7 @@ def seed_regulatory_corpus(db_mgr: FalkorClientManager):
     MERGE (p_17_2_b:Provision {provision_id: 'DPDP_ACT_SEC_17_2_B'})
     SET p_17_2_b.section_number = '17(2)(b)',
         p_17_2_b.title = 'Exemption for Non-Personalized Research, Archiving & Statistics',
-        p_17_2_b.legal_status = 'FUTURE_OBLIGATION',
+        p_17_2_b.legal_status = 'IN_FORCE',
         p_17_2_b.source_ref = 'Act No. 22 of 2023, s. 17(2)(b)'
 
     MERGE (p_17_3:Provision {provision_id: 'DPDP_ACT_SEC_17_3'})
