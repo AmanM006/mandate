@@ -43,7 +43,7 @@ We chose **FalkorDB** for three decisive technical capabilities:
 
 At the heart of MANDATE is a typed, multi-relational property graph:
 
-```
+```text
 [Statutory Provision] <---[:GOVERNED_BY]--- [Compliance Control]
                                                     ^
                                                     | (monitors)
