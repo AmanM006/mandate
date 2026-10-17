@@ -25,6 +25,17 @@ class EvaluationRunner:
         eval_aether = f"{prefix}_aetherlearn"
         eval_nexus = f"{prefix}_nexusops"
 
+        # Capture live demo graph state before suite runs
+        g_live = self.db_mgr.get_tenant_graph("aetherlearn")
+        try:
+            live_nodes_before = g_live.ro_query("MATCH (n) RETURN count(n)").result_set[0][0]
+            live_vendor_before = g_live.ro_query(
+                "MATCH (v:Vendor {vendor_id: 'VND_01'}) RETURN v.enforce_strict_guardian_handshake"
+            ).result_set[0][0]
+        except Exception:
+            live_nodes_before = None
+            live_vendor_before = None
+
         seed_regulatory_corpus(self.db_mgr)
         seed_flagship_aetherlearn(self.db_mgr, tenant_id=eval_aether)
         seed_isolated_nexusops(self.db_mgr, tenant_id=eval_nexus)
@@ -68,7 +79,8 @@ class EvaluationRunner:
             if cid == "TC-01":
                 # Conflicting internal control: bypass edge on DF_01
                 res = g_aether.ro_query(
-                    "MATCH (df:DataFlow {flow_id: 'DF_01'})-[b:BYPASSES]->(ctl:Control) RETURN count(b)"
+                    "MATCH (df:DataFlow {flow_id: 'DF_01', tenant_id: $tenant_id})-[b:BYPASSES]->(ctl:Control {tenant_id: $tenant_id}) RETURN count(b)",
+                    {"tenant_id": eval_aether}
                 ).result_set[0][0]
                 actual_ev = "CONTRADICTS_CLAIM" if res > 0 else "SUPPORTS_CLAIM"
                 actual_claim = "INVALIDATED_STALE"
@@ -78,7 +90,8 @@ class EvaluationRunner:
             elif cid == "TC-02":
                 # Vendor strict handshake status in AetherLearn graph
                 res_v = g_aether.ro_query(
-                    "MATCH (v:Vendor {vendor_id: 'VND_01'}) RETURN v.enforce_strict_guardian_handshake"
+                    "MATCH (v:Vendor {vendor_id: 'VND_01', tenant_id: $tenant_id}) RETURN v.enforce_strict_guardian_handshake",
+                    {"tenant_id": eval_aether}
                 ).result_set
                 handshake = res_v[0][0] if res_v else None
                 actual_ev = "CONTRADICTS_CLAIM" if handshake is False else "SUPPORTS_CLAIM"
@@ -89,7 +102,8 @@ class EvaluationRunner:
             elif cid == "TC-09":
                 # Premise PRM_001 selective invalidation audit
                 res_prm = g_aether.ro_query(
-                    "MATCH (p:Premise {premise_id: 'PRM_001'}) RETURN p.status"
+                    "MATCH (p:Premise {premise_id: 'PRM_001', tenant_id: $tenant_id}) RETURN p.status",
+                    {"tenant_id": eval_aether}
                 ).result_set
                 actual_claim = res_prm[0][0] if res_prm else "NOT_FOUND"
                 is_match = (actual_claim in ["VALID_ACTIVE", "SUPERSEDED"])
@@ -98,7 +112,8 @@ class EvaluationRunner:
             elif cid == "TC-10":
                 # Independent billing claim CLM_ENC_04 retention
                 res_bill = g_aether.ro_query(
-                    "MATCH (c:Claim {claim_id: 'CLM_ENC_04'}) RETURN c.status, c.is_stale"
+                    "MATCH (c:Claim {claim_id: 'CLM_ENC_04', tenant_id: $tenant_id}) RETURN c.status, c.is_stale",
+                    {"tenant_id": eval_aether}
                 ).result_set
                 actual_claim = res_bill[0][0] if res_bill else "NOT_FOUND"
                 is_match = (actual_claim == "VALID_ACTIVE" and res_bill[0][1] is False)
@@ -107,7 +122,8 @@ class EvaluationRunner:
             elif cid in ["TC-21", "TC-22", "TC-23"]:
                 # NexusOps enterprise APM has zero minor data
                 res_nx = g_nexus.ro_query(
-                    "MATCH (df:DataFlow {tenant_id: 'nexusops'})-[p:PROCESSES]->(c:DataCategory) WHERE c.name CONTAINS 'Minor' RETURN count(df)"
+                    "MATCH (df:DataFlow {tenant_id: $tenant_id})-[p:PROCESSES]->(c:DataCategory) WHERE c.name CONTAINS 'Minor' RETURN count(df)",
+                    {"tenant_id": eval_nexus}
                 ).result_set[0][0]
                 is_match = (res_nx == 0)
                 actual_ev = "SUPPORTS_CLAIM" if res_nx == 0 else "CONTRADICTS_CLAIM"
@@ -116,7 +132,8 @@ class EvaluationRunner:
             elif cid == "TC-27":
                 # Multi-tenant boundary isolation
                 leakage = g_nexus.ro_query(
-                    "MATCH (c:Claim {tenant_id: 'aetherlearn'}) RETURN count(c)"
+                    "MATCH (c:Claim {tenant_id: $tenant_id}) RETURN count(c)",
+                    {"tenant_id": eval_aether}
                 ).result_set[0][0]
                 is_match = (leakage == 0)
                 actual_ev = "SUPPORTS_CLAIM" if leakage == 0 else "CONTRADICTS_CLAIM"
@@ -134,7 +151,8 @@ class EvaluationRunner:
             elif cid == "TC-29":
                 # Task handoff lease fencing verification
                 res_tsk = g_aether.ro_query(
-                    "MATCH (t:Task {task_id: 'TSK_REMED_01'}) RETURN t.lease_version, t.status"
+                    "MATCH (t:Task {task_id: 'TSK_REMED_01', tenant_id: $tenant_id}) RETURN t.lease_version, t.status",
+                    {"tenant_id": eval_aether}
                 ).result_set
                 is_match = (len(res_tsk) > 0)
                 actual_ev = "SUPPORTS_CLAIM" if is_match else "CONTRADICTS_CLAIM"
@@ -143,7 +161,8 @@ class EvaluationRunner:
             elif cid == "TC-30":
                 # Invalidation event history audit trail in graph
                 res_evt = g_aether.ro_query(
-                    "MATCH (evt:InvalidationEvent {tenant_id: 'aetherlearn'}) RETURN count(evt)"
+                    "MATCH (evt:InvalidationEvent {tenant_id: $tenant_id}) RETURN count(evt)",
+                    {"tenant_id": eval_aether}
                 ).result_set[0][0]
                 is_match = (res_evt > 0)
                 actual_ev = "SUPPORTS_CLAIM" if res_evt > 0 else "INSUFFICIENT_EVIDENCE"
@@ -180,6 +199,18 @@ class EvaluationRunner:
                 },
                 "passed": is_match
             })
+
+        if live_nodes_before is not None:
+            live_nodes_after = g_live.ro_query("MATCH (n) RETURN count(n)").result_set[0][0]
+            live_vendor_after = g_live.ro_query(
+                "MATCH (v:Vendor {vendor_id: 'VND_01'}) RETURN v.enforce_strict_guardian_handshake"
+            ).result_set[0][0]
+            assert live_nodes_after == live_nodes_before, (
+                f"Live demo graph node count modified during benchmark! Before: {live_nodes_before}, After: {live_nodes_after}"
+            )
+            assert live_vendor_after == live_vendor_before, (
+                f"Live demo vendor state modified during benchmark! Before: {live_vendor_before}, After: {live_vendor_after}"
+            )
 
         return {
             "total_cases": total,

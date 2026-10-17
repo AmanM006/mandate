@@ -102,6 +102,18 @@ def run_hidden_benchmark(prefix: str = "reserved_suite") -> Dict[str, Any]:
     suite_nexus = f"{prefix}_nexusops"
 
     mgr = FalkorClientManager()
+
+    # Capture live demo graph state before suite runs
+    g_live = mgr.get_tenant_graph("aetherlearn")
+    try:
+        live_nodes_before = g_live.ro_query("MATCH (n) RETURN count(n)").result_set[0][0]
+        live_vendor_before = g_live.ro_query(
+            "MATCH (v:Vendor {vendor_id: 'VND_01'}) RETURN v.enforce_strict_guardian_handshake"
+        ).result_set[0][0]
+    except Exception:
+        live_nodes_before = None
+        live_vendor_before = None
+
     seed_regulatory_corpus(mgr)
     seed_flagship_aetherlearn(mgr, tenant_id=suite_aether)
     seed_isolated_nexusops(mgr, tenant_id=suite_nexus)
@@ -284,19 +296,26 @@ def run_hidden_benchmark(prefix: str = "reserved_suite") -> Dict[str, Any]:
 
         # Case 8: Episodic session recovery after premise invalidation
         elif cid == "HIDDEN-08":
-            # Check episodic history: verify premise invalidation history audit events and superseded conclusions
+            # Strict verification: require two conclusions with different session IDs,
+            # a SUPERSEDES edge connecting them, and the expected prior and revised verdicts.
             executed_query = """
-            MATCH (clm:Claim {tenant_id: $tenant_id})-[:HAS_INVALIDATION_HISTORY]->(evt:InvalidationEvent)
-            RETURN count(evt)
+            MATCH (rev:AssessmentConclusion {tenant_id: $tenant_id})-[:SUPERSEDES]->(prior:AssessmentConclusion {tenant_id: $tenant_id})
+            RETURN prior.session_id, prior.verdict, rev.session_id, rev.verdict
             """
-            res_inv = g_aether.ro_query(executed_query, {"tenant_id": suite_aether}).result_set[0][0]
-            # Also check if any cross-session superseded conclusion exists
-            res_sup = g_aether.ro_query("MATCH (c:AssessmentConclusion {tenant_id: $tenant_id})-[:SUPERSEDES]->(p:AssessmentConclusion) RETURN count(c)", {"tenant_id": suite_aether}).result_set[0][0]
-            if res_inv > 0 or res_sup > 0:
-                actual = "MODELED_CONTROL_TESTS_PASS"
+            rows = g_aether.ro_query(executed_query, {"tenant_id": suite_aether}).result_set
+            if rows and len(rows) > 0:
+                p_sess, p_verd, r_sess, r_verd = rows[0]
+                diff_sessions = (p_sess != r_sess) and bool(p_sess) and bool(r_sess)
+                expected_verdicts = (p_verd == 'FAILING_CONTROLS_DETECTED' and r_verd == 'STAGED_REMEDIATION_PENDING_APPROVAL')
+                if diff_sessions and expected_verdicts:
+                    actual = "MODELED_CONTROL_TESTS_PASS"
+                    detail_msg = f"Episodic recovery verified: Prior session {p_sess} verdict '{p_verd}' superseded by session {r_sess} verdict '{r_verd}'"
+                else:
+                    actual = "FAIL_INVALID_SUPERSEDES_METADATA"
+                    detail_msg = f"Found supersedes edge but metadata mismatch: prior=({p_sess}, {p_verd}), rev=({r_sess}, {r_verd})"
             else:
-                actual = "FAIL_NO_AUDIT_TRAIL"
-            detail_msg = f"Episodic recovery confirmed: {res_inv} InvalidationEvent audits, {res_sup} superseded conclusions."
+                actual = "FAIL_NO_SUPERSEDES_EDGE"
+                detail_msg = "No AssessmentConclusion nodes connected by [:SUPERSEDES] found in tenant namespace"
 
         is_pass = (actual == expected)
         if is_pass:
@@ -323,6 +342,18 @@ def run_hidden_benchmark(prefix: str = "reserved_suite") -> Dict[str, Any]:
     print("-" * 80)
     print(f"RESERVED EVALUATION SUITE: {passed}/{total} VERIFIED ({acc:.1f}%)")
     print("=" * 80 + "\n")
+
+    if live_nodes_before is not None:
+        live_nodes_after = g_live.ro_query("MATCH (n) RETURN count(n)").result_set[0][0]
+        live_vendor_after = g_live.ro_query(
+            "MATCH (v:Vendor {vendor_id: 'VND_01'}) RETURN v.enforce_strict_guardian_handshake"
+        ).result_set[0][0]
+        assert live_nodes_after == live_nodes_before, (
+            f"Live demo graph node count modified during reserved suite! Before: {live_nodes_before}, After: {live_nodes_after}"
+        )
+        assert live_vendor_after == live_vendor_before, (
+            f"Live demo vendor state modified during reserved suite! Before: {live_vendor_before}, After: {live_vendor_after}"
+        )
 
     return {
         "total_cases": total,

@@ -23,46 +23,46 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
     MERGE (comp)-[:OFFERS_PRODUCT]->(prod)
 
     // 2. Data Categories
-    MERGE (cat_child:DataCategory {category_id: 'CAT_CHILD_PROFILE', tenant_id: 'aetherlearn'})
+    MERGE (cat_child:DataCategory {category_id: 'CAT_CHILD_PROFILE', tenant_id: $tenant_id})
     SET cat_child.name = 'Minor Student Profile & Educational Records',
         cat_child.is_child_data = true,
         cat_child.sensitivity = 'HIGH'
 
-    MERGE (cat_parent:DataCategory {category_id: 'CAT_PARENT_CONTACT', tenant_id: 'aetherlearn'})
+    MERGE (cat_parent:DataCategory {category_id: 'CAT_PARENT_CONTACT', tenant_id: $tenant_id})
     SET cat_parent.name = 'Parent/Guardian Contact & Consent Proof',
         cat_parent.is_child_data = false,
         cat_parent.sensitivity = 'MEDIUM'
 
-    MERGE (cat_telemetry:DataCategory {category_id: 'CAT_TELEMETRY', tenant_id: 'aetherlearn'})
+    MERGE (cat_telemetry:DataCategory {category_id: 'CAT_TELEMETRY', tenant_id: $tenant_id})
     SET cat_telemetry.name = 'Course Telemetry & Keystroke Cadence',
         cat_telemetry.is_child_data = true,
         cat_telemetry.sensitivity = 'MEDIUM'
 
-    MERGE (cat_billing:DataCategory {category_id: 'CAT_BILLING', tenant_id: 'aetherlearn'})
+    MERGE (cat_billing:DataCategory {category_id: 'CAT_BILLING', tenant_id: $tenant_id})
     SET cat_billing.name = 'Subscription Payment Records',
         cat_billing.is_child_data = false,
         cat_billing.sensitivity = 'HIGH'
 
     // 3. Systems & Vendors
-    MERGE (sys_auth:System {system_id: 'SYS_AUTH_GATEWAY', tenant_id: 'aetherlearn'})
+    MERGE (sys_auth:System {system_id: 'SYS_AUTH_GATEWAY', tenant_id: $tenant_id})
     SET sys_auth.name = 'Auth0 / Custom SSO Gateway',
         sys_auth.tier = 'TIER_1'
 
-    MERGE (sys_analytics:System {system_id: 'SYS_ANALYTICS_PIPELINE', tenant_id: 'aetherlearn'})
+    MERGE (sys_analytics:System {system_id: 'SYS_ANALYTICS_PIPELINE', tenant_id: $tenant_id})
     SET sys_analytics.name = 'ClickHouse Event Stream',
         sys_analytics.tier = 'TIER_2'
 
-    MERGE (vnd_kiddcheck:Vendor {vendor_id: 'VND_01', tenant_id: 'aetherlearn'})
+    MERGE (vnd_kiddcheck:Vendor {vendor_id: 'VND_01', tenant_id: $tenant_id})
     SET vnd_kiddcheck.name = 'KiddCheck ID',
         vnd_kiddcheck.service_type = 'Verifiable Parental Consent (VPC) & Age Assurance',
         vnd_kiddcheck.enforce_strict_guardian_handshake = false
 
-    MERGE (vnd_trackpulse:Vendor {vendor_id: 'VND_02', tenant_id: 'aetherlearn'})
+    MERGE (vnd_trackpulse:Vendor {vendor_id: 'VND_02', tenant_id: $tenant_id})
     SET vnd_trackpulse.name = 'TrackPulse SDK',
         vnd_trackpulse.service_type = 'User Engagement & Behavioral Telemetry'
 
     // 4. Data Flows
-    MERGE (df_signup:DataFlow {flow_id: 'DF_01', tenant_id: 'aetherlearn'})
+    MERGE (df_signup:DataFlow {flow_id: 'DF_01', tenant_id: $tenant_id})
     SET df_signup.endpoint = '/api/v2/auth/student-signup',
         df_signup.protocol = 'HTTPS/REST',
         df_signup.description = 'Student registration, age gating, and initial token issuance'
@@ -70,7 +70,7 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
     MERGE (df_signup)-[:DEPENDS_ON]->(sys_auth)
     MERGE (df_signup)-[:INTEGRATES_WITH]->(vnd_kiddcheck)
 
-    MERGE (df_telemetry:DataFlow {flow_id: 'DF_02', tenant_id: 'aetherlearn'})
+    MERGE (df_telemetry:DataFlow {flow_id: 'DF_02', tenant_id: $tenant_id})
     SET df_telemetry.endpoint = '/api/v1/telemetry/events',
         df_telemetry.protocol = 'WSS/JSON',
         df_telemetry.description = 'Continuous tracking of interaction events, problem solve duration, keystrokes'
@@ -78,43 +78,43 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
     MERGE (df_telemetry)-[:DEPENDS_ON]->(sys_analytics)
     MERGE (df_telemetry)-[:INTEGRATES_WITH]->(vnd_trackpulse)
 
-    MERGE (df_billing:DataFlow {flow_id: 'DF_03', tenant_id: 'aetherlearn'})
+    MERGE (df_billing:DataFlow {flow_id: 'DF_03', tenant_id: $tenant_id})
     SET df_billing.endpoint = '/api/v2/parent/subscription',
         df_billing.protocol = 'HTTPS/REST',
         df_billing.description = 'Stripe webhook payment processing for annual parent subscription'
     MERGE (df_billing)-[:PROCESSES]->(cat_billing)
 
-    MERGE (df_research:DataFlow {flow_id: 'DF_04', tenant_id: 'aetherlearn'})
+    MERGE (df_research:DataFlow {flow_id: 'DF_04', tenant_id: $tenant_id})
     SET df_research.endpoint = '/api/v1/research/pedagogical-stats',
         df_research.protocol = 'HTTPS/BATCH',
         df_research.description = 'Aggregated learning efficacy research dataset with irreversible tokenization'
 
     // 5. Controls
-    MERGE (ctl_vpc:Control {control_id: 'CTL_VPC_GATE', tenant_id: 'aetherlearn'})
+    MERGE (ctl_vpc:Control {control_id: 'CTL_VPC_GATE', tenant_id: $tenant_id})
     SET ctl_vpc.name = 'Guardian Verifiable Consent Gate',
         ctl_vpc.description = 'Mandatory parent verification before student profile activation',
         ctl_vpc.status = 'DEGRADED_BYPASSED'
     MERGE (ctl_vpc)-[:COVERS_FLOW]->(df_signup)
 
-    MERGE (ctl_enc:Control {control_id: 'CTL_BILLING_ENCRYPTION', tenant_id: 'aetherlearn'})
+    MERGE (ctl_enc:Control {control_id: 'CTL_BILLING_ENCRYPTION', tenant_id: $tenant_id})
     SET ctl_enc.name = 'Payment Card & Billing AES-256 GCM Encryption',
         ctl_enc.status = 'ACTIVE_VERIFIED'
     MERGE (ctl_enc)-[:COVERS_FLOW]->(df_billing)
 
-    MERGE (ctl_research:Control {control_id: 'CTL_RESEARCH_ANONYMIZATION', tenant_id: 'aetherlearn'})
+    MERGE (ctl_research:Control {control_id: 'CTL_RESEARCH_ANONYMIZATION', tenant_id: $tenant_id})
     SET ctl_research.name = 'Sec 17(2)(b) Pedagogical Research Anonymizer',
         ctl_research.status = 'ACTIVE_VERIFIED'
     MERGE (ctl_research)-[:COVERS_FLOW]->(df_research)
 
     // 6. Evidence: The Conflict and the Bypass
-    MERGE (ev_policy:Evidence {evidence_id: 'EV_POL_01', tenant_id: 'aetherlearn'})
+    MERGE (ev_policy:Evidence {evidence_id: 'EV_POL_01', tenant_id: $tenant_id})
     SET ev_policy.type = 'POLICY_DOCUMENT',
         ev_policy.title = 'AetherLearn DPDP Policy POL-DPDP-2025-01',
         ev_policy.recorded_at = '2025-09-15T10:00:00Z',
         ev_policy.content_summary = 'Section 4.1: Strictly requires parent ID/SMS verification via KiddCheck ID prior to onboarding any user under 18.'
     MERGE (ev_policy)-[:SUPPORTS]->(ctl_vpc)
 
-    MERGE (ev_ticket:Evidence {evidence_id: 'EV_TICKET_ENG_8419', tenant_id: 'aetherlearn'})
+    MERGE (ev_ticket:Evidence {evidence_id: 'EV_TICKET_ENG_8419', tenant_id: $tenant_id})
     SET ev_ticket.type = 'ENGINEERING_TICKET',
         ev_ticket.title = 'Jira ENG-8419: Add Quick Guest Preview via Google SSO',
         ev_ticket.recorded_at = '2026-03-10T14:30:00Z',
@@ -124,17 +124,17 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
     MERGE (df_signup)-[:BYPASSES]->(ctl_vpc)
 
     // 7. Premises, Claims & Dependency Chains
-    MERGE (prm_vpc:Premise {premise_id: 'PRM_001', tenant_id: 'aetherlearn'})
+    MERGE (prm_vpc:Premise {premise_id: 'PRM_001', tenant_id: $tenant_id})
     SET prm_vpc.statement = 'All student registrations are strictly verified by KiddCheck ID before profile activation.',
         prm_vpc.status = 'VALID_ACTIVE'
     MERGE (ev_policy)-[:SUPPORTS_PREMISE]->(prm_vpc)
 
-    MERGE (prm_enc:Premise {premise_id: 'PRM_004', tenant_id: 'aetherlearn'})
+    MERGE (prm_enc:Premise {premise_id: 'PRM_004', tenant_id: $tenant_id})
     SET prm_enc.statement = 'Stripe payment webhooks utilize AES-256 GCM authenticated payload encryption.',
         prm_enc.status = 'VALID_ACTIVE'
 
     // Root Claim: Verifiable Parental Consent
-    MERGE (clm_vpc:Claim {claim_id: 'CLM_VPC_01', tenant_id: 'aetherlearn'})
+    MERGE (clm_vpc:Claim {claim_id: 'CLM_VPC_01', tenant_id: $tenant_id})
     SET clm_vpc.provision_id = 'DPDP_ACT_SEC_9_1',
         clm_vpc.assertion = 'AetherLearn enforces Section 9(1) verifiable parental consent across all youth signups.',
         clm_vpc.status = 'VALID_ACTIVE',
@@ -142,7 +142,7 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
     MERGE (clm_vpc)-[:DEPENDS_ON_PREMISE]->(prm_vpc)
 
     // Independent Billing Claim
-    MERGE (clm_enc:Claim {claim_id: 'CLM_ENC_04', tenant_id: 'aetherlearn'})
+    MERGE (clm_enc:Claim {claim_id: 'CLM_ENC_04', tenant_id: $tenant_id})
     SET clm_enc.provision_id = 'DPDP_ACT_SEC_8_5',
         clm_enc.assertion = 'Payment data flow DF_03 satisfies reasonable security safeguards.',
         clm_enc.status = 'VALID_ACTIVE',
@@ -150,7 +150,7 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
     MERGE (clm_enc)-[:DEPENDS_ON_PREMISE]->(prm_enc)
 
     // 8. Invalidation History Event (Preserving Audit Trail)
-    MERGE (inval_evt:InvalidationEvent {event_id: 'INVAL_EVT_001', tenant_id: 'aetherlearn'})
+    MERGE (inval_evt:InvalidationEvent {event_id: 'INVAL_EVT_001', tenant_id: $tenant_id})
     SET inval_evt.timestamp = 1774880000000,
         inval_evt.triggered_by_premise = 'PRM_001',
         inval_evt.previous_status = 'VALID_ACTIVE',
@@ -158,8 +158,24 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
         inval_evt.reason = 'Contradiction identified: ENG-8419 Google SSO Quick Preview bypass'
     MERGE (clm_vpc)-[:HAS_INVALIDATION_HISTORY]->(inval_evt)
 
+    // Cross-session episodic memory conclusions
+    MERGE (conc_prev:AssessmentConclusion {conclusion_id: 'CONC_SESS_A_01', tenant_id: $tenant_id})
+    SET conc_prev.session_id = 'SESS_2026_03_10_DISCOVERY',
+        conc_prev.verdict = 'FAILING_CONTROLS_DETECTED',
+        conc_prev.target_claim_id = 'CLM_VPC_01',
+        conc_prev.timestamp = 1774880010000,
+        conc_prev.officer_id = 'officer_alice'
+
+    MERGE (conc_rev:AssessmentConclusion {conclusion_id: 'CONC_SESS_B_02', tenant_id: $tenant_id})
+    SET conc_rev.session_id = 'SESS_2026_03_11_AUDIT_FOLLOWUP',
+        conc_rev.verdict = 'STAGED_REMEDIATION_PENDING_APPROVAL',
+        conc_rev.target_claim_id = 'CLM_VPC_01',
+        conc_rev.timestamp = 1774880050000,
+        conc_rev.officer_id = 'officer_alice'
+    MERGE (conc_rev)-[:SUPERSEDES]->(conc_prev)
+
     // 9. Initial Open Task & ActionProposal for Remediator
-    MERGE (tsk_remed:Task {task_id: 'TSK_REMED_01', tenant_id: 'aetherlearn'})
+    MERGE (tsk_remed:Task {task_id: 'TSK_REMED_01', tenant_id: $tenant_id})
     SET tsk_remed.type = 'APPLY_REMEDIATION',
         tsk_remed.status = 'OPEN',
         tsk_remed.lease_version = 0,
@@ -170,7 +186,7 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
         tsk_remed.description = 'Draft remediation configuration removing Google SSO guest bypass and enforcing strict KiddCheck ID handshake.'
 
     // Stored ActionProposal with allowlisted configuration parameters
-    MERGE (prop:ActionProposal {proposal_id: 'PROP_REMED_01', tenant_id: 'aetherlearn'})
+    MERGE (prop:ActionProposal {proposal_id: 'PROP_REMED_01', tenant_id: $tenant_id})
     SET prop.target_claim_id = 'CLM_VPC_01',
         prop.target_vendor_id = 'VND_01',
         prop.target_flow_id = 'DF_01',
@@ -184,7 +200,30 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
     MERGE (tsk_remed)-[:EXECUTES_PROPOSAL]->(prop)
     """
     g.query(query, {"tenant_id": tenant_id})
-    print(f"Seeded {tenant_id} flagship graph successfully.")
+
+    # Strict structural assertion: verify that graph contains expected flows, controls, claims, evidence, task, proposal, and bypass under $tenant_id
+    verify_q = """
+    MATCH (df:DataFlow {tenant_id: $tenant_id}) WITH count(df) AS flow_cnt
+    MATCH (ctl:Control {tenant_id: $tenant_id}) WITH flow_cnt, count(ctl) AS ctl_cnt
+    MATCH (clm:Claim {tenant_id: $tenant_id}) WITH flow_cnt, ctl_cnt, count(clm) AS clm_cnt
+    MATCH (ev:Evidence {tenant_id: $tenant_id}) WITH flow_cnt, ctl_cnt, clm_cnt, count(ev) AS ev_cnt
+    MATCH (t:Task {tenant_id: $tenant_id}) WITH flow_cnt, ctl_cnt, clm_cnt, ev_cnt, count(t) AS task_cnt
+    MATCH (p:ActionProposal {tenant_id: $tenant_id}) WITH flow_cnt, ctl_cnt, clm_cnt, ev_cnt, task_cnt, count(p) AS prop_cnt
+    MATCH (df_b:DataFlow {tenant_id: $tenant_id})-[:BYPASSES]->(ctl_b:Control {tenant_id: $tenant_id})
+    RETURN flow_cnt, ctl_cnt, clm_cnt, ev_cnt, task_cnt, prop_cnt, count(df_b) AS bypass_cnt
+    """
+    res = g.ro_query(verify_q, {"tenant_id": tenant_id}).result_set
+    assert res and len(res) > 0, f"Post-seed verification query failed for tenant {tenant_id}"
+    flow_cnt, ctl_cnt, clm_cnt, ev_cnt, task_cnt, prop_cnt, bypass_cnt = res[0]
+    assert flow_cnt >= 4, f"Expected >= 4 flows under {tenant_id}, got {flow_cnt}"
+    assert ctl_cnt >= 3, f"Expected >= 3 controls under {tenant_id}, got {ctl_cnt}"
+    assert clm_cnt >= 2, f"Expected >= 2 claims under {tenant_id}, got {clm_cnt}"
+    assert ev_cnt >= 2, f"Expected >= 2 evidence nodes under {tenant_id}, got {ev_cnt}"
+    assert task_cnt >= 1, f"Expected >= 1 task under {tenant_id}, got {task_cnt}"
+    assert prop_cnt >= 1, f"Expected >= 1 proposal under {tenant_id}, got {prop_cnt}"
+    assert bypass_cnt >= 1, f"Expected >= 1 active bypass edge under {tenant_id}, got {bypass_cnt}"
+
+    print(f"Seeded {tenant_id} flagship graph successfully and verified all entities & bypass.")
 
 def seed_isolated_nexusops(db_mgr: FalkorClientManager, tenant_id: str = "nexusops"):
     """

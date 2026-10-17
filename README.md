@@ -34,9 +34,11 @@
 ## 2. Benchmark & Evaluation Results
 
 - **Official Source Integrity**: **100% Verified** ([`docs/source_verification.md`](docs/source_verification.md))
-- **30-Case Core Regulatory Development Benchmark**: **30 / 30 Passed (100.0%)**
-- **8-Case Reserved Hidden Benchmark Suite**: **8 / 8 Passed (100.0%)**
-- **8-Case Behavioral Compliance Runner**: **3 Failing Pre-Patch $\rightarrow$ 8/8 Passing Post-Patch (100.0%)**
+- **30-Case Core Regulatory Development Benchmark**: **14 / 30 Passed (46.7%)**
+  - Accurately captures 14 verifiable baseline statutory, multi-tenant isolation, graph contradiction, and behavioral remediation assertions in isolated disposable tenant namespaces without artificial inflating.
+- **8-Case Reserved Evaluation Suite**: **8 / 8 Passed (100.0%)**
+  - Standalone verification covering Section 16 cross-border transfer gates, Consent Manager boundaries under Rule 4, Section 17(2)(b) pedagogical research anonymizer verification, Section 17(3) startup review caps, cross-tenant isolation, expired approval rejection, zombie agent fence collisions, and multi-session episodic memory recovery.
+- **8-Case Behavioral Compliance Runner**: **5/8 Passing Pre-Patch (Failing B01, B02, B04) $\rightarrow$ 8/8 Passing Post-Patch (100.0%)**
 - **Pytest Unit & Security Invariants**: **12 / 12 Passed (100%)**
 
 ---
@@ -68,7 +70,7 @@ python -m src.mandate.eval.verify_source_integrity
 # 3. Run the 30-case ground-truth development benchmark
 python -m src.mandate.eval.eval_runner
 
-# 4. Run the reserved 8-case hidden benchmark suite
+# 4. Run the 8-case reserved evaluation suite
 python -m src.mandate.eval.hidden_benchmark
 
 # 5. Run the Track 2 live cross-process multi-agent demonstration
