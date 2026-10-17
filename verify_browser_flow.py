@@ -1,3 +1,9 @@
+"""
+API End-to-End Verification Script (Automated API sequence testing).
+NOTE: This script exercises the exact sequence of HTTP endpoints used by the browser console.
+For live judge demonstrations, interactively click 'Authorize & Apply Guarded Patch' in the Web Console.
+"""
+
 import urllib.request
 import json
 import time

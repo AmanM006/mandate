@@ -85,12 +85,12 @@ RESERVED_HIDDEN_CASES: List[Dict[str, Any]] = [
     },
     {
         "case_id": "HIDDEN-08",
-        "title": "Episodic Session Graph Memory Recovery",
+        "title": "Episodic Session Graph Memory Recovery (Seeded Graph-Shape Check)",
         "provision_id": "AGENT_EPISODIC_MEMORY",
         "category": "CAUSAL_MEMORY",
         "expected_legal_status": "FUTURE_OBLIGATION",
         "expected_verdict": "MODELED_CONTROL_TESTS_PASS",
-        "description": "Independent session reads graph without prior in-memory context and verifies premise invalidation history."
+        "description": "Seeded graph-shape check: verifies existing AssessmentConclusion nodes across distinct session IDs connected by [:SUPERSEDES] with valid prior and revised verdicts. For live dynamic recovery across running processes, see session_a_process.py and session_b_process.py."
     }
 ]
 

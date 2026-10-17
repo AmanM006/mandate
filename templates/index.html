@@ -419,20 +419,25 @@
                 </div>
             `;
 
-            // Detect active proposal ID
+            // Detect active proposal ID, task ID, and evidence revision
             let activePropId = "PROP_REMED_01";
             let activeTaskId = "TSK_REMED_01";
+            let activeEvRev = "REV_EV_ENG_8419_v1";
             if (data.tasks && data.tasks.length > 0) {
                 const targetTask = data.tasks.find(t => t.proposal && t.proposal.status !== 'APPLIED_COMMITTED') || data.tasks[0];
                 if (targetTask) {
                     activeTaskId = targetTask.task_id;
                     if (targetTask.proposal) {
                         activePropId = targetTask.proposal.proposal_id;
+                        if (targetTask.proposal.evidence_revision) {
+                            activeEvRev = targetTask.proposal.evidence_revision;
+                        }
                     }
                 }
             }
             window.__activeProposalId = activePropId;
             window.__activeTaskId = activeTaskId;
+            window.__activeEvidenceRevision = activeEvRev;
             if (document.getElementById('displayPropId')) {
                 document.getElementById('displayPropId').innerText = activePropId;
             }
@@ -569,7 +574,7 @@
                     fence_token: fenceToken,
                     idempotency_key: "IDEM-CONSOLE-" + Date.now(),
                     human_approval_token: approvalToken,
-                    expected_evidence_revision: "REV_EV_ENG_8419_v1"
+                    expected_evidence_revision: window.__activeEvidenceRevision || "REV_EV_ENG_8419_v1"
                 })
             });
 

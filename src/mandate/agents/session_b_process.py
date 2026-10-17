@@ -19,7 +19,7 @@ import datetime
 from src.mandate.schema.db import FalkorClientManager
 from src.mandate.tools.graph_tools import GraphTools
 
-def run_agent_session_b():
+def run_agent_session_b(pause_for_ui: bool = False):
     session_id = f"SES_B_{uuid.uuid4().hex[:8]}"
     print(f"\n=== [PROCESS 2] AGENT SESSION B LAUNCHED (Session: {session_id}, PID: {sys.argv[0]}) ===")
 
@@ -92,47 +92,58 @@ def run_agent_session_b():
     print(f"[{session_id}] Successfully created {fresh_prop_id} bound to evidence revision {ev_rev}.")
 
     # 6. Request and obtain authenticated officer approval
-    # NOTE: This step represents a SIMULATED OFFICER APPROVAL in automated batch runs,
-    # where Officer Alice authenticates via TestClient and issues a cryptographically-bound ApprovalRecord.
-    # For live interactive evaluation, the user reviews proposal parameters and clicks 'Authorize' in the Web Console.
-    print(f"[{session_id}] Submitting proposal to simulated officer review flow (Officer Alice via API TestClient)...")
-    from fastapi.testclient import TestClient
-    from src.mandate.api import app as fastapi_app
-    api_client = TestClient(fastapi_app)
+    if pause_for_ui:
+        print(f"\n[ACTION REQUIRED] Paused for Real Human Officer Review in Web Console:")
+        print(f"-> Open http://127.0.0.1:8000 in your browser.")
+        print(f"-> Review staged proposal '{fresh_prop_id}' on task 'TSK_HANDOFF_01'.")
+        print(f"-> Click 'Authorize & Apply Guarded Patch' to approve and execute atomically.")
+        input("Press [ENTER] after clicking Authorize in the UI to verify the rendered transition...")
+        
+        # Verify in FalkorDB that human applied the patch in the UI
+        q_check_ui = "MATCH (p:ActionProposal {proposal_id: $prop_id, tenant_id: 'aetherlearn'}) RETURN p.status"
+        res_ui = g.ro_query(q_check_ui, {"prop_id": fresh_prop_id}).result_set
+        ui_status = res_ui[0][0] if res_ui else None
+        print(f"[{session_id}] Observed proposal status in FalkorDB: {ui_status}")
+    else:
+        # Automated batch mode: simulated officer approval via TestClient
+        print(f"[{session_id}] Automated mode: Submitting proposal to simulated officer review flow (Officer Alice via API TestClient)...")
+        from fastapi.testclient import TestClient
+        from src.mandate.api import app as fastapi_app
+        api_client = TestClient(fastapi_app)
 
-    # Alice authenticates
-    login_res = api_client.post(
-        "/api/v1/auth/login",
-        json={"username": "officer_alice", "password": "alice_secret_compliance_2026", "tenant_id": "aetherlearn"}
-    )
-    assert login_res.status_code == 200, f"Officer login failed: {login_res.text}"
-    alice_csrf = login_res.json()["csrf_token"]
+        # Alice authenticates
+        login_res = api_client.post(
+            "/api/v1/auth/login",
+            json={"username": "officer_alice", "password": "alice_secret_compliance_2026", "tenant_id": "aetherlearn"}
+        )
+        assert login_res.status_code == 200, f"Officer login failed: {login_res.text}"
+        alice_csrf = login_res.json()["csrf_token"]
 
-    # Alice reviews and signs proposal
-    appr_resp = api_client.post(
-        "/api/v1/tenant/proposal/approve",
-        headers={"x-csrf-token": alice_csrf},
-        json={"proposal_id": fresh_prop_id, "duration_sec": 300}
-    )
-    assert appr_resp.status_code == 200, f"Officer approval rejected: {appr_resp.text}"
-    appr = appr_resp.json()
-    assert appr.get("approval_token") is not None
-    print(f"[{session_id}] Authenticated Officer Alice issued ApprovalRecord: {appr['approval_token'][:25]}...")
+        # Alice reviews and signs proposal
+        appr_resp = api_client.post(
+            "/api/v1/tenant/proposal/approve",
+            headers={"x-csrf-token": alice_csrf},
+            json={"proposal_id": fresh_prop_id, "duration_sec": 300}
+        )
+        assert appr_resp.status_code == 200, f"Officer approval rejected: {appr_resp.text}"
+        appr = appr_resp.json()
+        assert appr.get("approval_token") is not None
+        print(f"[{session_id}] Authenticated Officer Alice issued ApprovalRecord: {appr['approval_token'][:25]}...")
 
-    # 7. Execute Remediation Patch: Apply allowlisted configuration via Atomic Cypher
-    print(f"[{session_id}] Applying remediation patch via strict atomic Cypher write...")
-    apply_res = tools.apply_remediation_patch(
-        tenant_id="aetherlearn",
-        task_id="TSK_HANDOFF_01",
-        proposal_id=fresh_prop_id,
-        agent_id="agent_worker_b",
-        fence_token=lease["fence_token"],
-        idempotency_key=f"IDEM-PROC2-{uuid.uuid4().hex[:6]}",
-        human_approval_token=appr["approval_token"],
-        expected_evidence_revision=ev_rev
-    )
-    print(f"[{session_id}] Remediation Patch Execution Result: {apply_res}")
-    assert apply_res["success"] is True
+        # 7. Execute Remediation Patch: Apply allowlisted configuration via Atomic Cypher
+        print(f"[{session_id}] Applying remediation patch via strict atomic Cypher write...")
+        apply_res = tools.apply_remediation_patch(
+            tenant_id="aetherlearn",
+            task_id="TSK_HANDOFF_01",
+            proposal_id=fresh_prop_id,
+            agent_id="agent_worker_b",
+            fence_token=lease["fence_token"],
+            idempotency_key=f"IDEM-PROC2-{uuid.uuid4().hex[:6]}",
+            human_approval_token=appr["approval_token"],
+            expected_evidence_revision=ev_rev
+        )
+        print(f"[{session_id}] Remediation Patch Execution Result: {apply_res}")
+        assert apply_res["success"] is True
 
     # 8. Dynamic Decision Computation via Synthetic Behavioral Suite & Live Graph
     print(f"[{session_id}] Evaluating post-patch controls against live graph...")
@@ -203,4 +214,5 @@ def run_agent_session_b():
     return 0
 
 if __name__ == "__main__":
-    sys.exit(run_agent_session_b())
+    pause = "--pause-for-ui" in sys.argv
+    sys.exit(run_agent_session_b(pause_for_ui=pause))
