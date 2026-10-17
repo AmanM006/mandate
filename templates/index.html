@@ -407,8 +407,7 @@
             `).join('');
 
             const handshakeClass = data.vendor && data.vendor.strict_handshake ? 'text-emerald-400' : 'text-rose-400';
-            const bypassClass = data.contradictions && data.contradictions.length > 0 ? 'text-rose-400' : 'text-emerald-400';
-            const bypassCount = data.contradictions ? data.contradictions.length : 0;
+            const bypassClass = bypassCount > 0 ? 'text-rose-400' : 'text-emerald-400';
             const handshakeVal = data.vendor ? data.vendor.strict_handshake : false;
 
             graphBox.innerHTML = `
