@@ -376,22 +376,31 @@ class GraphTools:
                 return {"success": False, "reason": "EVIDENCE_REVISION_MISMATCH", "applied": False}
 
         # 3. ATOMIC SINGLE-QUERY MUTATION
-        # Matches EVERY required node (Task, Proposal, Evidence, Vendor, Approval) before the FIRST SET.
-        # Guarantees zero mutations if any precondition fails or if evidence mutated between approval and apply.
+        # Matches EVERY required node and relationship in the graph:
+        # - Active task leased to worker with matching fence token
+        # - Proposal bound to task via [:EXECUTES_PROPOSAL]
+        # - Target Claim bound via [:REMEDIES_CLAIM]
+        # - Target Vendor matching proposal.target_vendor_id
+        # - Underlying Evidence node matching proposal.evidence_revision
+        # - Unused ApprovalRecord bound to proposal with matching stored mutation digest
+        # ALL WHERE conditions execute on the matched row BEFORE any mutation.
+        # If any condition fails, zero nodes are updated.
         atomic_apply_query = """
         MATCH (t:Task {task_id: $task_id, tenant_id: $tenant_id})-[:EXECUTES_PROPOSAL]->(p:ActionProposal {proposal_id: $proposal_id, tenant_id: $tenant_id})
-        MATCH (a:ApprovalRecord {token: $token, tenant_id: $tenant_id})-[:APPROVES_PROPOSAL]->(p)
+        MATCH (p)-[:REMEDIES_CLAIM]->(clm:Claim {tenant_id: $tenant_id})
+        MATCH (p)-[:BASED_ON_EVIDENCE]->(ev:Evidence {tenant_id: $tenant_id})
         MATCH (v:Vendor {vendor_id: p.target_vendor_id, tenant_id: $tenant_id})
-        OPTIONAL MATCH (p)-[:BASED_ON_EVIDENCE]->(ev:Evidence {tenant_id: $tenant_id})
+        MATCH (a:ApprovalRecord {token: $token, tenant_id: $tenant_id})-[:APPROVES_PROPOSAL]->(p)
         WHERE t.status = 'IN_PROGRESS'
           AND t.owner_agent = $agent_id
           AND t.lease_version = $fence_token
           AND p.status = 'APPROVED'
-          AND (ev IS NULL OR ev.evidence_revision = p.evidence_revision)
+          AND ev.evidence_revision = p.evidence_revision
           AND ($expected_rev IS NULL OR p.evidence_revision = $expected_rev)
           AND a.used = false
           AND a.tenant_id = $tenant_id
           AND a.expires_at >= timestamp()
+          AND a.evidence_revision = p.evidence_revision
         SET a.used = true,
             a.consumed_at = timestamp(),
             t.idempotency_key = $idempotency_key,
