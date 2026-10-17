@@ -8,8 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/lenis@1.1.18/dist/lenis.css">
-    <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -616,28 +614,11 @@
             refreshState();
         }
 
-        // Initialize Lenis Smooth Scroll safely
-        try {
-            if (typeof Lenis !== 'undefined') {
-                const lenis = new Lenis({
-                    duration: 1.2,
-                    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-                    orientation: 'vertical',
-                    gestureOrientation: 'vertical',
-                    smoothWheel: true,
-                    wheelMultiplier: 1.0,
-                });
+        // Native CSS Smooth Scroll
+        document.documentElement.style.scrollBehavior = 'smooth';
 
-                function raf(time) {
-                    lenis.raf(time);
-                    requestAnimationFrame(raf);
-                }
-                requestAnimationFrame(raf);
-            }
-        } catch (e) {
-            console.warn("Lenis initialization skipped:", e);
-        }
-
+        // Immediate and lifecycle-bound initial fetch
+        refreshState();
         document.addEventListener('DOMContentLoaded', refreshState);
         window.addEventListener('load', refreshState);
     </script>
