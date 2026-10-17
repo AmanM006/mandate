@@ -3,119 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mandate - Compliance Intelligence Console</title>
+    <title>MANDATE — FalkorDB Autonomous Compliance Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'monospace'],
+            },
             colors: {
-              brand: { 50: '#f0fdf4', 500: '#22c55e', 900: '#14532d' },
-              falkor: { 500: '#ef4444', 600: '#dc2626' }
+              pitch: {
+                950: '#030712',
+                900: '#090d16',
+                850: '#0d131f',
+                800: '#121927',
+                700: '#1c2638'
+              }
             }
           }
         }
       }
     </script>
+    <style>
+      body {
+        background-color: #000000;
+        color: #f3f4f6;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 5px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #000000;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #27272a;
+        border-radius: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #3f3f46;
+      }
+      .grid-pattern {
+        background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
+        background-size: 24px 24px;
+      }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
-    <!-- Top Nav -->
-    <header class="border-b border-slate-800 bg-slate-900/90 px-6 py-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur">
-        <div class="flex items-center space-x-3">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center font-bold text-slate-950 shadow-lg shadow-emerald-500/20">M</div>
+<body class="bg-black text-zinc-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-300">
+    <!-- Top Global Status Bar -->
+    <header class="border-b border-zinc-900 bg-black/95 px-6 py-3.5 flex items-center justify-between sticky top-0 z-50 backdrop-blur">
+        <div class="flex items-center space-x-3.5">
+            <div class="w-9 h-9 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center font-bold text-white shadow-inner font-mono text-base">
+                <span class="text-emerald-400">⚡</span>
+            </div>
             <div>
-                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                    MANDATE <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">FalkorDB-Native</span>
-                </h1>
-                <p class="text-xs text-slate-400">Multi-Agent Invalidation &amp; Guarded Remediation Engine</p>
+                <div class="flex items-center gap-2.5">
+                    <h1 class="text-sm font-extrabold tracking-widest text-white uppercase font-mono">
+                        MANDATE
+                    </h1>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-zinc-900 text-zinc-400 border border-zinc-800 font-mono font-medium tracking-wide">
+                        FalkorDB v4.22
+                    </span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 font-mono flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        LIVE GRAPH
+                    </span>
+                </div>
+                <p class="text-[11px] text-zinc-500 mt-0.5">Multi-Agent Epistemic Memory, Invalidation &amp; Guarded Remediation</p>
             </div>
         </div>
 
-        <div class="flex items-center space-x-4">
-            <!-- User Profile / Session Badge -->
-            <div id="authProfileBadge" class="flex items-center bg-slate-900 border border-slate-800 rounded-lg px-3 py-1 text-xs">
-                <span class="text-slate-400 mr-2">Officer:</span>
-                <span id="authUserName" class="text-emerald-400 font-semibold font-mono">Alice Sharma (Officer)</span>
+        <div class="flex items-center space-x-3">
+            <!-- Reviewer Session Chip -->
+            <div id="authProfileBadge" class="flex items-center bg-zinc-950 border border-zinc-800/80 rounded-md px-3 py-1.5 text-xs font-mono">
+                <span class="text-zinc-500 mr-2 text-[10px] uppercase tracking-wider">OFFICER:</span>
+                <span id="authUserName" class="text-zinc-200 font-medium">Alice Sharma</span>
             </div>
 
-            <!-- Tenant Selector (Bound to session allowed tenants) -->
-            <div class="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-1">
-                <span class="text-xs text-slate-400 px-2 font-mono">TENANT:</span>
-                <select id="tenantSelect" onchange="switchTenant(this.value)" class="bg-slate-900 text-xs text-emerald-400 font-semibold rounded px-2 py-1 outline-none border border-slate-700">
-                    <option value="aetherlearn">aetherlearn (Flagship EdTech)</option>
-                    <option value="nexusops">nexusops (Isolated Cloud Tenant)</option>
+            <!-- Tenant Selector -->
+            <div class="flex items-center bg-zinc-950 border border-zinc-800/80 rounded-md px-2 py-1">
+                <span class="text-[10px] text-zinc-500 px-1 font-mono uppercase">TENANT:</span>
+                <select id="tenantSelect" onchange="switchTenant(this.value)" class="bg-black text-xs text-emerald-400 font-semibold font-mono rounded px-2 py-0.5 outline-none border border-zinc-800 focus:border-zinc-600 transition cursor-pointer">
+                    <option value="aetherlearn">aetherlearn (EdTech Flagship)</option>
+                    <option value="nexusops">nexusops (Isolated Cloud)</option>
                 </select>
             </div>
-            <div class="flex items-center space-x-2 text-xs font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-3 py-1.5 rounded-md">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                <span>FalkorDB Connected (127.0.0.1:6379)</span>
+
+            <!-- FalkorDB Endpoint Indicator -->
+            <div class="hidden sm:flex items-center space-x-2 text-[11px] font-mono bg-zinc-950 text-zinc-400 border border-zinc-800/80 px-3 py-1.5 rounded-md">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>localhost:6379</span>
             </div>
         </div>
     </header>
 
     <!-- Main Workspace -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 grid-pattern">
         
-        <!-- Left Column: Case Overview & Provenance Traversal -->
+        <!-- Left 2 Columns: Living Case & Graph State -->
         <div class="lg:col-span-2 space-y-6">
             
             <!-- Living Case Card -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div class="bg-zinc-950 border border-zinc-800/90 rounded-xl p-5 shadow-2xl relative overflow-hidden">
+                <div class="absolute -right-12 -top-12 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="flex items-center justify-between pb-3.5 border-b border-zinc-900">
                     <div>
-                        <span class="text-xs font-mono uppercase tracking-wider text-slate-400">Active Living Case</span>
-                        <h2 class="text-base font-semibold text-white">AetherLearn Minor Onboarding &amp; Parental Consent</h2>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Living Case #01</span>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded bg-zinc-900 text-zinc-400 font-mono">TRACK 2 &amp; 3</span>
+                        </div>
+                        <h2 class="text-base font-bold text-white tracking-tight mt-0.5">AetherLearn Minor Onboarding &amp; Verifiable Consent</h2>
                     </div>
-                    <span class="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
-                        Discrepancy Under Investigation
+                    <span id="caseStatusBadge" class="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono font-medium">
+                        DISCREPANCY_DETECTED
                     </span>
                 </div>
 
                 <!-- Discovered Conflict & Bypass Evidence -->
                 <div class="mt-4 space-y-3" id="contradictionsContainer">
-                    <div class="text-xs text-slate-400 animate-pulse">Querying FalkorDB graph traversal...</div>
+                    <div class="text-xs text-zinc-500 animate-pulse font-mono">Querying FalkorDB graph traversal...</div>
                 </div>
             </div>
 
             <!-- Graph Provenance Inspector -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-                        <span>Graph Traversal &amp; Invalidation Path</span>
-                        <span class="text-xs font-normal text-slate-400">([:BYPASSES] &amp; [:DEPENDS_ON_PREMISE*1..4])</span>
-                    </h3>
-                    <button onclick="refreshState()" class="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 transition">
+            <div class="bg-zinc-950 border border-zinc-800/90 rounded-xl p-5 shadow-2xl">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-zinc-900">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <span>Epistemic Dependency Traversal</span>
+                            <span class="text-[11px] font-mono text-zinc-500">([:DEPENDS_ON_PREMISE*1..4])</span>
+                        </h3>
+                        <p class="text-[11px] text-zinc-500 mt-0.5">Tracks cascading invalidation when evidence contradicts active controls</p>
+                    </div>
+                    <button onclick="refreshState()" class="text-xs px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 rounded-md border border-zinc-700/80 transition font-mono flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                         Refresh Graph
                     </button>
                 </div>
                 
-                <div id="graphVisualSummary" class="p-4 bg-slate-950 rounded-lg border border-slate-800/80 font-mono text-xs space-y-2">
+                <div id="graphVisualSummary" class="p-4 bg-black rounded-lg border border-zinc-900 font-mono text-xs space-y-2">
                     <!-- Dynamic Graph Visualization Tree -->
                 </div>
             </div>
 
             <!-- Unseen Document Ingestion Demo Panel -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <div class="flex items-center justify-between mb-3">
+            <div class="bg-zinc-950 border border-zinc-800/90 rounded-xl p-5 shadow-2xl">
+                <div class="flex items-center justify-between mb-3 pb-3 border-b border-zinc-900">
                     <div>
-                        <h3 class="text-sm font-semibold text-white">General Unseen Document Ingestion</h3>
-                        <p class="text-xs text-slate-400">Tests non-fixture extraction with SHA-256 hash &amp; polarity classification</p>
+                        <h3 class="text-sm font-bold text-white">General Unseen Document Ingestion</h3>
+                        <p class="text-[11px] text-zinc-500">Non-fixture heuristic extraction with SHA-256 integrity digest &amp; polarity mapping</p>
                     </div>
-                    <span class="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">
-                        GENERAL_EXTRACTION
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-cyan-400 border border-cyan-800/40 font-mono">
+                        EXTRACTION_PIPELINE
                     </span>
                 </div>
                 <div class="space-y-3">
-                    <textarea id="unseenDocInput" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 font-mono focus:border-emerald-500 outline-none" placeholder="Paste unseen policy note, incident report, or engineering change..."></textarea>
+                    <textarea id="unseenDocInput" rows="3" class="w-full bg-black border border-zinc-800/90 rounded-lg p-3 text-xs text-zinc-200 font-mono focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 outline-none transition" placeholder="Paste unseen policy memo, sprint ticket, or engineering change..."></textarea>
                     <div class="flex justify-between items-center">
-                        <button onclick="loadSampleIncident()" class="text-xs text-slate-400 hover:text-slate-200 underline">
+                        <button onclick="loadSampleIncident()" class="text-xs text-zinc-500 hover:text-zinc-300 underline font-mono transition">
                             Insert Sample Incident (INC-9021)
                         </button>
-                        <button onclick="submitUnseenDoc()" class="text-xs font-medium px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition">
-                            Ingest into Graph
+                        <button onclick="submitUnseenDoc()" class="text-xs font-semibold px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg border border-zinc-700 transition font-mono flex items-center gap-2">
+                            <span>Ingest into Graph</span>
                         </button>
                     </div>
-                    <div id="unseenResult" class="hidden p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-300">
+                    <div id="unseenResult" class="hidden p-3 bg-black border border-zinc-900 rounded-lg text-xs font-mono text-zinc-300">
                     </div>
                 </div>
             </div>
@@ -126,32 +183,47 @@
         <div class="space-y-6">
 
             <!-- Guarded Remediation Action Proposal -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div class="bg-zinc-950 border border-zinc-800/90 rounded-xl p-5 shadow-2xl relative">
+                <div class="flex items-center justify-between pb-3.5 border-b border-zinc-900">
                     <div>
-                        <span class="text-xs font-mono uppercase tracking-wider text-slate-400">Remediation Action</span>
-                        <h3 class="text-sm font-semibold text-white">Stored Proposal Approval Gate</h3>
+                        <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Governance Gate</span>
+                        <h3 class="text-sm font-bold text-white mt-0.5">Guarded Remediation Action</h3>
                     </div>
-                    <span id="proposalBadge" class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
-                        PROPOSAL_BOUND
+                    <span id="proposalBadge" class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-mono font-medium">
+                        PROPOSAL_STAGED
                     </span>
                 </div>
 
                 <div class="mt-4 space-y-3 text-xs">
-                    <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-1.5 font-mono">
-                        <div class="text-slate-400">Proposal ID: <span class="text-slate-200">PROP_REMED_01</span></div>
-                        <div class="text-slate-400">Target Claim: <span class="text-slate-200">CLM_VPC_01</span></div>
-                        <div class="text-slate-400">Action: <span class="text-emerald-400">Remove Guest Bypass &amp; Enforce Strict Handshake</span></div>
-                        <div class="text-slate-400">Revision: <span class="text-slate-200">REV_EV_ENG_8419_v1</span></div>
-                        <div class="text-slate-400">Governance: <span class="text-amber-400 font-semibold">Human Officer Approval Required</span></div>
+                    <div class="p-3.5 bg-black rounded-lg border border-zinc-900 space-y-2 font-mono">
+                        <div class="flex justify-between text-zinc-400">
+                            <span>Target Proposal:</span>
+                            <span id="displayPropId" class="text-zinc-200 font-bold">PROP_REMED_01</span>
+                        </div>
+                        <div class="flex justify-between text-zinc-400">
+                            <span>Target Claim:</span>
+                            <span class="text-zinc-200">CLM_VPC_01</span>
+                        </div>
+                        <div class="flex justify-between text-zinc-400">
+                            <span>Patch Mutation:</span>
+                            <span class="text-emerald-400 font-medium">Enforce Strict Handshake</span>
+                        </div>
+                        <div class="flex justify-between text-zinc-400">
+                            <span>Evidence Revision:</span>
+                            <span class="text-zinc-200">REV_EV_ENG_8419_v1</span>
+                        </div>
+                        <div class="pt-1.5 border-t border-zinc-900 flex justify-between items-center">
+                            <span class="text-zinc-500 text-[11px]">Guard Policy:</span>
+                            <span class="text-amber-400 text-[11px] font-semibold">Single-Use Reviewer Signature</span>
+                        </div>
                     </div>
 
                     <div id="patchActionBox" class="space-y-2 pt-2">
-                        <button id="applyPatchBtn" onclick="applyGuardedRemediation()" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg text-xs transition flex items-center justify-center gap-2">
+                        <button id="applyPatchBtn" onclick="applyGuardedRemediation()" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-black font-bold rounded-lg text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950 font-mono">
                             <span>Authorize &amp; Apply Guarded Patch</span>
                         </button>
-                        <p class="text-[11px] text-slate-500 text-center">
-                            Validates lease fence token, idempotency key, and human officer signature before database commit.
+                        <p class="text-[11px] text-zinc-500 text-center font-mono">
+                            Validates monotonic fence token, idempotency key, and officer signature in single atomic Cypher query.
                         </p>
                     </div>
                     <div id="patchResultBox" class="hidden p-3 rounded-lg text-xs font-mono"></div>
@@ -159,35 +231,35 @@
             </div>
 
             <!-- Behavioral Test Runner (Synthetic 8-Case Suite) -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <div class="flex items-center justify-between mb-3">
+            <div class="bg-zinc-950 border border-zinc-800/90 rounded-xl p-5 shadow-2xl">
+                <div class="flex items-center justify-between mb-3 pb-3 border-b border-zinc-900">
                     <div>
-                        <h3 class="text-sm font-semibold text-white">Synthetic Behavioral Suite</h3>
-                        <p class="text-xs text-slate-400">8 synthetic signup test cases (Minors, Adults, Boundaries)</p>
+                        <h3 class="text-sm font-bold text-white">Synthetic Behavioral Suite</h3>
+                        <p class="text-[11px] text-zinc-500">8 verification cases across minors, adults &amp; bypass vectors</p>
                     </div>
-                    <span id="suiteScore" class="text-xs px-2 py-0.5 rounded font-mono font-bold bg-slate-800 text-slate-300">
+                    <span id="suiteScore" class="text-xs px-2.5 py-0.5 rounded font-mono font-bold bg-zinc-900 text-zinc-400 border border-zinc-800">
                         Checking...
                     </span>
                 </div>
 
-                <div id="suiteCases" class="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                <div id="suiteCases" class="space-y-1.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar font-mono">
                     <!-- Dynamic test cases -->
                 </div>
             </div>
 
             <!-- DPDP Commencement Timeline -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-sm font-semibold text-white">DPDP Statutory Commencement</h3>
-                    <span class="text-[10px] text-slate-400 font-mono">Official Gazette</span>
+            <div class="bg-zinc-950 border border-zinc-800/90 rounded-xl p-5 shadow-2xl">
+                <div class="flex items-center justify-between mb-2.5 pb-2.5 border-b border-zinc-900">
+                    <h3 class="text-sm font-bold text-white">DPDP Statutory Commencement</h3>
+                    <span class="text-[10px] text-zinc-500 font-mono">Official Gazette No. 58</span>
                 </div>
-                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 text-xs space-y-2">
-                    <div class="flex justify-between items-center text-slate-300">
+                <div class="p-3 bg-black rounded-lg border border-zinc-900 text-xs space-y-2 font-mono">
+                    <div class="flex justify-between items-center text-zinc-300">
                         <span>Sec 9(1) (Parental Consent)</span>
-                        <span class="text-amber-400 font-mono">2027-05-14</span>
+                        <span class="text-amber-400">2027-05-14</span>
                     </div>
-                    <div class="text-[11px] text-slate-500">
-                        18 Months from publication. (Gazette dated 13 Nov 2025; upload barcode 14 Nov 2025). Status: <span class="text-amber-400">FUTURE_OBLIGATION</span>.
+                    <div class="text-[11px] text-zinc-500 leading-relaxed font-sans">
+                        18 Months from publication. (Gazette dated 13 Nov 2025; upload barcode 14 Nov 2025). Status: <span class="text-amber-400 font-mono">FUTURE_OBLIGATION</span>.
                     </div>
                 </div>
             </div>
@@ -249,18 +321,28 @@
 
             // Render Contradictions matching traverse_contradictions record structure
             const contBox = document.getElementById('contradictionsContainer');
+            const caseBadge = document.getElementById('caseStatusBadge');
+
             if (!data.contradictions || data.contradictions.length === 0) {
-                contBox.innerHTML = '<div class="text-xs text-emerald-400 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">No active contradictions found for this tenant namespace. Zero leakage.</div>';
+                contBox.innerHTML = '<div class="text-xs font-mono text-emerald-400 p-3.5 bg-black rounded-lg border border-emerald-900/60 flex items-center gap-2"><span>✓</span> No active contradictions found in this tenant graph. Zero leakage detected.</div>';
+                if (caseBadge) {
+                    caseBadge.innerText = "VERIFIED_COMPLIANT";
+                    caseBadge.className = "text-xs px-2.5 py-1 rounded-full bg-emerald-950/70 text-emerald-400 border border-emerald-800/60 font-mono font-medium";
+                }
             } else {
+                if (caseBadge) {
+                    caseBadge.innerText = "DISCREPANCY_DETECTED";
+                    caseBadge.className = "text-xs px-2.5 py-1 rounded-full bg-rose-950/70 text-rose-400 border border-rose-800/60 font-mono font-medium";
+                }
                 contBox.innerHTML = data.contradictions.map(c => `
-                    <div class="p-3 bg-slate-950 border border-rose-500/30 rounded-lg space-y-1.5">
+                    <div class="p-3.5 bg-black border border-rose-900/70 rounded-lg space-y-1.5 font-mono">
                         <div class="flex justify-between items-center">
-                            <span class="text-xs font-mono text-rose-400 font-semibold">[!] CONFLICT DETECTED: ${c.bypassed_control || c.active_control || 'Control Gate'}</span>
-                            <span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-mono">DEGRADED_BYPASSED</span>
+                            <span class="text-xs text-rose-400 font-bold">[!] CONFLICT: ${c.bypassed_control || c.active_control || 'Control Gate'}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/80">DEGRADED_BYPASSED</span>
                         </div>
-                        <div class="text-xs text-slate-300">Target Endpoint: <span class="font-mono text-emerald-400">${c.endpoint}</span> (${c.category || 'Personal Data'})</div>
-                        <div class="text-xs text-slate-400">Supporting Evidence: <span class="text-slate-200">${(c.supporting_evidence || []).join(', ') || 'N/A'}</span></div>
-                        <div class="text-xs text-rose-300/90">Contradictory Source: <span class="text-rose-200 font-mono">${(c.contradictory_evidence || []).join(', ') || 'N/A'}</span></div>
+                        <div class="text-xs text-zinc-300">Target Endpoint: <span class="text-emerald-400 font-semibold">${c.endpoint}</span> (${c.category || 'Personal Data'})</div>
+                        <div class="text-xs text-zinc-400">Supporting Evidence: <span class="text-zinc-200">${(c.supporting_evidence || []).join(', ') || 'N/A'}</span></div>
+                        <div class="text-xs text-rose-300">Contradictory Source: <span class="text-rose-200 font-semibold">${(c.contradictory_evidence || []).join(', ') || 'N/A'}</span></div>
                     </div>
                 `).join('');
             }
@@ -268,14 +350,14 @@
             // Render Graph Visual Summary
             const graphBox = document.getElementById('graphVisualSummary');
             let claimSummary = (data.claims || []).map(clm => `
-                <div class="p-2 border border-slate-800 rounded bg-slate-900/50">
-                    <div class="flex justify-between">
-                        <span class="text-slate-200 font-bold">${clm.claim_id} (${clm.provision_id})</span>
-                        <span class="px-1.5 py-0.5 rounded text-[10px] ${clm.status === 'VALID_ACTIVE' || clm.status === 'MODELED_CONTROL_TESTS_PASS' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${clm.status}</span>
+                <div class="p-2.5 border border-zinc-900 rounded bg-zinc-950/70">
+                    <div class="flex justify-between items-center">
+                        <span class="text-zinc-200 font-bold">${clm.claim_id} <span class="text-zinc-500 font-normal">(${clm.provision_id})</span></span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] ${clm.status === 'VALID_ACTIVE' || clm.status === 'MODELED_CONTROL_TESTS_PASS' ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40' : 'bg-rose-950/60 text-rose-400 border border-rose-800/40'}">${clm.status}</span>
                     </div>
-                    <div class="text-slate-400 text-[11px] mt-1">${clm.assertion}</div>
+                    <div class="text-zinc-400 text-[11px] mt-1 font-sans">${clm.assertion}</div>
                     ${clm.invalidation_history && clm.invalidation_history.length > 0 ? `
-                        <div class="mt-1 text-[10px] text-amber-400/90 border-t border-slate-800/80 pt-1">
+                        <div class="mt-1.5 text-[10px] text-amber-400/90 border-t border-zinc-900 pt-1">
                             Invalidation Audit: ${clm.invalidation_history[0].reason}
                         </div>
                     ` : ''}
@@ -288,9 +370,9 @@
             const handshakeVal = data.vendor ? data.vendor.strict_handshake : false;
 
             graphBox.innerHTML = `
-                <div class="text-slate-400 mb-1">// Active FalkorDB Claims for ${data.tenant_id}:</div>
+                <div class="text-zinc-500 mb-1">// Active Claims in FalkorDB Tenant Namespace [${data.tenant_id}]:</div>
                 <div class="space-y-2">${claimSummary}</div>
-                <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex justify-between">
+                <div class="mt-3 pt-2.5 border-t border-zinc-900 text-[11px] text-zinc-400 flex justify-between">
                     <span>Vendor Strict Handshake: <b class="${handshakeClass}">${handshakeVal}</b></span>
                     <span>Active Bypasses: <b class="${bypassClass}">${bypassCount}</b></span>
                 </div>
@@ -310,6 +392,9 @@
             }
             window.__activeProposalId = activePropId;
             window.__activeTaskId = activeTaskId;
+            if (document.getElementById('displayPropId')) {
+                document.getElementById('displayPropId').innerText = activePropId;
+            }
 
             // Refresh Behavioral Suite
             refreshBehavioralSuite();
@@ -322,16 +407,16 @@
             
             const badge = document.getElementById('suiteScore');
             badge.innerText = `${suite.passed_cases} / ${suite.total_cases} PASSED`;
-            badge.className = `text-xs px-2 py-0.5 rounded font-mono font-bold ${suite.all_passed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`;
+            badge.className = `text-xs px-2.5 py-0.5 rounded font-mono font-bold ${suite.all_passed ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-800/60' : 'bg-rose-950/70 text-rose-400 border border-rose-800/60'}`;
 
             const casesBox = document.getElementById('suiteCases');
             casesBox.innerHTML = suite.details.map(tc => `
-                <div class="p-2 rounded bg-slate-950 border border-slate-800/80 flex items-center justify-between text-xs">
+                <div class="p-2 rounded bg-black border border-zinc-900 flex items-center justify-between text-xs">
                     <div>
-                        <div class="font-mono text-slate-300 font-semibold">${tc.case_id}: ${tc.description}</div>
-                        <div class="text-[10px] text-slate-500">${tc.reason}</div>
+                        <div class="font-mono text-zinc-300 font-semibold">${tc.case_id}: <span class="font-sans font-normal text-zinc-400">${tc.description}</span></div>
+                        <div class="text-[10px] text-zinc-500 font-sans">${tc.reason}</div>
                     </div>
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${tc.passed ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400 font-bold'}">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono ${tc.passed ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40' : 'bg-rose-950/60 text-rose-400 border border-rose-800/40 font-bold'}">
                         ${tc.passed ? 'PASS' : 'FAIL'}
                     </span>
                 </div>
@@ -343,7 +428,7 @@
             const btn = document.getElementById('applyPatchBtn');
             const resBox = document.getElementById('patchResultBox');
             btn.disabled = true;
-            btn.innerText = "Acquiring Task Lease with Monotonic Fencing Token...";
+            btn.innerText = "Acquiring Monotonic Fence Token...";
 
             const targetTaskId = window.__activeTaskId || "TSK_REMED_01";
             const targetPropId = window.__activeProposalId || "PROP_REMED_01";
@@ -363,7 +448,7 @@
             });
             const leaseData = await leaseResp.json();
             if (!leaseResp.ok) {
-                resBox.className = "p-3 rounded-lg text-xs font-mono bg-rose-500/10 text-rose-300 border border-rose-500/30";
+                resBox.className = "p-3 rounded-lg text-xs font-mono bg-rose-950/60 text-rose-300 border border-rose-900";
                 resBox.style.display = "block";
                 resBox.innerText = "Task Lease Acquisition Failed: " + JSON.stringify(leaseData, null, 2);
                 btn.disabled = false;
@@ -372,7 +457,7 @@
             }
 
             const fenceToken = leaseData.fence_token;
-            btn.innerText = "Requesting Server-Signed ApprovalRecord from Officer Alice...";
+            btn.innerText = "Requesting Server Approval Signature...";
 
             // 2. Server generates single-use ApprovalRecord bound to current reviewer
             const apprResp = await fetch('/api/v1/tenant/proposal/approve', {
@@ -388,7 +473,7 @@
             });
             const apprData = await apprResp.json();
             if (!apprResp.ok) {
-                resBox.className = "p-3 rounded-lg text-xs font-mono bg-rose-500/10 text-rose-300 border border-rose-500/30";
+                resBox.className = "p-3 rounded-lg text-xs font-mono bg-rose-950/60 text-rose-300 border border-rose-900";
                 resBox.style.display = "block";
                 resBox.innerText = "Approval Authorization Failed: " + JSON.stringify(apprData, null, 2);
                 btn.disabled = false;
@@ -397,7 +482,7 @@
             }
 
             const approvalToken = apprData.approval_token;
-            btn.innerText = "Executing Single-Query Atomic Cypher Mutation...";
+            btn.innerText = "Committing Atomic Cypher Patch...";
 
             // 3. Post atomic patch
             const res = await fetch('/api/v1/tenant/apply-patch', {
@@ -418,7 +503,7 @@
             });
 
             const result = await res.json();
-            resBox.className = "p-3 rounded-lg text-xs font-mono " + (res.ok ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" : "bg-rose-500/10 text-rose-300 border border-rose-500/30");
+            resBox.className = "p-3 rounded-lg text-xs font-mono " + (res.ok ? "bg-emerald-950/60 text-emerald-300 border border-emerald-900" : "bg-rose-950/60 text-rose-300 border border-rose-900");
             resBox.style.display = "block";
             resBox.innerText = JSON.stringify(result, null, 2);
 
@@ -437,7 +522,7 @@
             if (!text) return;
             const resBox = document.getElementById('unseenResult');
             resBox.style.display = "block";
-            resBox.innerText = "Running Heuristic Keyword Extractor & SHA-256 Provenance...";
+            resBox.innerText = "Computing SHA-256 Digest & Extracting Graph Polarity...";
 
             const res = await fetch('/api/v1/tenant/ingest-unseen-document', {
                 method: 'POST',
