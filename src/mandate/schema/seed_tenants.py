@@ -1,23 +1,23 @@
 from src.mandate.schema.db import FalkorClientManager
 
-def seed_flagship_aetherlearn(db_mgr: FalkorClientManager):
+def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aetherlearn"):
     """
-    Seeds the Flagship Tenant (AetherLearn Labs) into 'mandate_aetherlearn'.
+    Seeds the Flagship Tenant (AetherLearn Labs) into tenant graph namespace.
     Models:
     - Company, Products, DataFlows, Controls, Evidence
     - The planted conflict: POL-DPDP-2025-01 vs ENG-8419 Google SSO Quick Preview bypass
     - Claims, multi-premise dependencies, InvalidationEvent structures
     """
-    g = db_mgr.get_tenant_graph("aetherlearn")
+    g = db_mgr.get_tenant_graph(tenant_id)
     
     query = """
     // 1. Company & Product
-    MERGE (comp:Company {tenant_id: 'aetherlearn'})
+    MERGE (comp:Company {tenant_id: $tenant_id})
     SET comp.name = 'AetherLearn Labs Pvt Ltd',
         comp.industry = 'EdTech / K-12 STEM Education',
         comp.jurisdiction = 'India'
 
-    MERGE (prod:Product {product_id: 'PROD_STEM_ACADEMY', tenant_id: 'aetherlearn'})
+    MERGE (prod:Product {product_id: 'PROD_STEM_ACADEMY', tenant_id: $tenant_id})
     SET prod.name = 'AetherSTEM Academy',
         prod.target_audience = 'Students aged 8-18'
     MERGE (comp)-[:OFFERS_PRODUCT]->(prod)
@@ -183,41 +183,41 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager):
     MERGE (prop)-[:BASED_ON_EVIDENCE]->(ev_ticket)
     MERGE (tsk_remed)-[:EXECUTES_PROPOSAL]->(prop)
     """
-    g.query(query)
-    print("Seeded AetherLearn flagship graph successfully.")
+    g.query(query, {"tenant_id": tenant_id})
+    print(f"Seeded {tenant_id} flagship graph successfully.")
 
-def seed_isolated_nexusops(db_mgr: FalkorClientManager):
+def seed_isolated_nexusops(db_mgr: FalkorClientManager, tenant_id: str = "nexusops"):
     """
-    Seeds Tenant 2 (NexusOps Cloud) into 'mandate_nexusops'.
+    Seeds Tenant 2 (NexusOps Cloud) into tenant graph namespace.
     Demonstrates multi-tenant isolation and subtle flow handling.
     """
-    g = db_mgr.get_tenant_graph("nexusops")
+    g = db_mgr.get_tenant_graph(tenant_id)
     
     query = """
-    MERGE (comp:Company {tenant_id: 'nexusops'})
+    MERGE (comp:Company {tenant_id: $tenant_id})
     SET comp.name = 'NexusOps Cloud Inc',
         comp.industry = 'B2B Cloud Observability & APM',
         comp.jurisdiction = 'India & Global'
 
-    MERGE (df_syslog:DataFlow {flow_id: 'DF_101', tenant_id: 'nexusops'})
+    MERGE (df_syslog:DataFlow {flow_id: 'DF_101', tenant_id: $tenant_id})
     SET df_syslog.endpoint = '/v1/ingest/syslog',
         df_syslog.protocol = 'TCP/TLS',
         df_syslog.description = 'Enterprise cluster log ingestion'
 
-    MERGE (df_intern:DataFlow {flow_id: 'DF_103', tenant_id: 'nexusops'})
+    MERGE (df_intern:DataFlow {flow_id: 'DF_103', tenant_id: $tenant_id})
     SET df_intern.endpoint = '/api/v1/intern-seats',
         df_intern.protocol = 'HTTPS/REST',
         df_intern.description = 'Enterprise customer FinCorp high-school apprentice user provisioning'
 
-    MERGE (cat_apprentice:DataCategory {category_id: 'CAT_APPRENTICE', tenant_id: 'nexusops'})
+    MERGE (cat_apprentice:DataCategory {category_id: 'CAT_APPRENTICE', tenant_id: $tenant_id})
     SET cat_apprentice.name = 'Minor Apprentice Corporate Account',
         cat_apprentice.is_child_data = true
     MERGE (df_intern)-[:PROCESSES]->(cat_apprentice)
 
-    MERGE (clm_b2b:Claim {claim_id: 'CLM_NEXUS_01', tenant_id: 'nexusops'})
+    MERGE (clm_b2b:Claim {claim_id: 'CLM_NEXUS_01', tenant_id: $tenant_id})
     SET clm_b2b.provision_id = 'DPDP_ACT_SEC_4',
         clm_b2b.status = 'VALID_ACTIVE',
         clm_b2b.assertion = 'NexusOps standard log processing is lawful under enterprise customer contracts.'
     """
-    g.query(query)
-    print("Seeded NexusOps isolated graph successfully.")
+    g.query(query, {"tenant_id": tenant_id})
+    print(f"Seeded {tenant_id} isolated graph successfully.")

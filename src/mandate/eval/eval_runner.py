@@ -18,20 +18,24 @@ class EvaluationRunner:
     def __init__(self, db_mgr: FalkorClientManager):
         self.db_mgr = db_mgr
 
-    def run_benchmark(self) -> Dict[str, Any]:
+    def run_benchmark(self, prefix: str = "eval_bench") -> Dict[str, Any]:
         from src.mandate.schema.seed_public import seed_regulatory_corpus
         from src.mandate.schema.seed_tenants import seed_flagship_aetherlearn, seed_isolated_nexusops
+        
+        eval_aether = f"{prefix}_aetherlearn"
+        eval_nexus = f"{prefix}_nexusops"
+
         seed_regulatory_corpus(self.db_mgr)
-        seed_flagship_aetherlearn(self.db_mgr)
-        seed_isolated_nexusops(self.db_mgr)
+        seed_flagship_aetherlearn(self.db_mgr, tenant_id=eval_aether)
+        seed_isolated_nexusops(self.db_mgr, tenant_id=eval_nexus)
 
         results = []
         passed = 0
         total = len(ANSWER_KEY)
 
         g_public = self.db_mgr.get_public_graph()
-        g_aether = self.db_mgr.get_tenant_graph("aetherlearn")
-        g_nexus = self.db_mgr.get_tenant_graph("nexusops")
+        g_aether = self.db_mgr.get_tenant_graph(eval_aether)
+        g_nexus = self.db_mgr.get_tenant_graph(eval_nexus)
 
         for tc in ANSWER_KEY:
             cid = tc["case_id"]
@@ -39,7 +43,8 @@ class EvaluationRunner:
             expected_legal = tc["legal_status"]
             expected_ev = tc["evidence_status"]
             expected_claim = tc["claim_status"]
-            tenant = tc.get("tenant", "aetherlearn")
+            raw_tenant = tc.get("tenant", "aetherlearn")
+            tenant = eval_aether if raw_tenant == "aetherlearn" else eval_nexus
 
             actual_legal = "UNVERIFIED"
             actual_ev = "UNVERIFIED"

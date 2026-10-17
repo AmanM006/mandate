@@ -395,15 +395,19 @@ class GraphTools:
         WHERE t.status = 'IN_PROGRESS'
           AND t.owner_agent = $agent_id
           AND t.lease_version = $fence_token
-          AND (t.lease_expires_at IS NULL OR t.lease_expires_at >= timestamp())
+          AND t.lease_expires_at IS NOT NULL
+          AND t.lease_expires_at >= timestamp()
           AND p.status = 'APPROVED'
           AND ev.evidence_revision = p.evidence_revision
           AND ($expected_rev IS NULL OR p.evidence_revision = $expected_rev)
           AND a.used = false
           AND a.tenant_id = $tenant_id
+          AND a.expires_at IS NOT NULL
           AND a.expires_at >= timestamp()
           AND a.evidence_revision = p.evidence_revision
-          AND (a.mutation_sig IS NULL OR p.mutation_sig IS NULL OR a.mutation_sig = p.mutation_sig)
+          AND a.mutation_sig IS NOT NULL
+          AND p.mutation_sig IS NOT NULL
+          AND a.mutation_sig = p.mutation_sig
         SET a.used = true,
             a.consumed_at = timestamp(),
             t.idempotency_key = $idempotency_key,

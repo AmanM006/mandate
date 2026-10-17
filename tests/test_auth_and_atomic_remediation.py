@@ -298,3 +298,48 @@ def test_atomic_preconditions_reject_swapped_task_evidence_mutation_and_missing_
     res_tok3 = g.ro_query("MATCH (a:ApprovalRecord {token: $tok}) RETURN a.used", {"tok": token3}).result_set
     assert res_tok3[0][0] is False
 
+def test_atomic_preconditions_reject_missing_lease_expiry_and_missing_digest():
+    """
+    Test 7: Atomic guard rejection on missing lease expiry or missing mutation digest.
+    Confirms strict t.lease_expires_at IS NOT NULL and a.mutation_sig = p.mutation_sig guards.
+    """
+    mgr = FalkorClientManager()
+    tools = GraphTools(mgr)
+    g = mgr.get_tenant_graph("aetherlearn")
+
+    # 1. Proposal with missing mutation_sig
+    lease1 = tools.acquire_task_lease("aetherlearn", "TSK_REMED_01", "agent_worker_nodigest", lease_duration_ms=10000)
+    appr1 = tools.create_proposal_approval("aetherlearn", "PROP_REMED_01", "officer_alice", ["aetherlearn"])
+    tok1 = appr1["approval_token"]
+
+    # Nullify mutation_sig on ActionProposal in graph
+    g.query("MATCH (p:ActionProposal {proposal_id: 'PROP_REMED_01', tenant_id: 'aetherlearn'}) SET p.mutation_sig = null")
+
+    res_nodigest = tools.apply_remediation_patch(
+        tenant_id="aetherlearn",
+        task_id="TSK_REMED_01",
+        proposal_id="PROP_REMED_01",
+        agent_id="agent_worker_nodigest",
+        fence_token=lease1["fence_token"],
+        idempotency_key="IDEM-NODIGEST",
+        human_approval_token=tok1,
+        expected_evidence_revision="REV_EV_ENG_8419_v1"
+    )
+    assert res_nodigest["success"] is False
+    assert res_nodigest["applied"] is False
+
+    # 2. Task with missing lease_expires_at
+    g.query("MATCH (t:Task {task_id: 'TSK_REMED_01', tenant_id: 'aetherlearn'}) SET t.lease_expires_at = null")
+    res_noexp = tools.apply_remediation_patch(
+        tenant_id="aetherlearn",
+        task_id="TSK_REMED_01",
+        proposal_id="PROP_REMED_01",
+        agent_id="agent_worker_nodigest",
+        fence_token=lease1["fence_token"],
+        idempotency_key="IDEM-NOEXP",
+        human_approval_token=tok1,
+        expected_evidence_revision="REV_EV_ENG_8419_v1"
+    )
+    assert res_noexp["success"] is False
+    assert res_noexp["applied"] is False
+

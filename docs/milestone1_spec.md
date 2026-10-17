@@ -62,9 +62,9 @@ The evaluation suite tests 30 distinct compliance and graph-reasoning scenarios 
 | **TC-01** | AetherLearn | Section 9(1) - Minor Parental Consent | `NON_COMPLIANT_CONFLICT` | Quick Guest Preview bypass (`DF-01`) contradicts `POL-DPDP-2025-01` & `Section 9(1)`. |
 | **TC-02** | AetherLearn | Rule 10 - VPC Verification Standards | `FUTURE_OBLIGATION_PREPARING` | Commences 14 May 2027 (18 mo). Vendor config `enforce_strict_guardian_handshake: false` fails future standard. |
 | **TC-03** | AetherLearn | Section 9(3) - Minor Behavioral Tracking | `NON_COMPLIANT_ACTIVE` | `TrackPulse SDK` captures keystrokes/behavioral metrics for minors (`DF-02`). |
-| **TC-04** | AetherLearn | Section 9(2) - Detrimental Effect Safety | `VERIFIED_COMPLIANT` | Content moderation system `ModSafe-AI` verified active on all student forum posts. |
+| **TC-04** | AetherLearn | Section 9(2) - Detrimental Effect Safety | `MODELED_CONTROL_TESTS_PASS` | Content moderation system `ModSafe-AI` verified active on all student forum posts. |
 | **TC-05** | AetherLearn | Rule 4 - Notice Requirements | `FUTURE_OBLIGATION_PREPARING` | Commences 14 Nov 2026 (12 mo). Notice exists in English/Hindi, requires 22-language translation audit. |
-| **TC-06** | AetherLearn | Section 6(1) - Consent Specificity | `VERIFIED_COMPLIANT` | Consent itemization implemented for educational data categories in `DF-01`. |
+| **TC-06** | AetherLearn | Section 6(1) - Consent Specificity | `MODELED_CONTROL_TESTS_PASS` | Consent itemization implemented for educational data categories in `DF-01`. |
 | **TC-07** | AetherLearn | Corrigendum G.S.R. 892(E) Impact | `VERSION_UPDATE_ONLY` | Textual correction to Schedule II reference; does not create substantive new rule or change date. |
 | **TC-08** | AetherLearn | Superseded Design: `DEC-2025-08-ARCH` | `SUPERSEDED` | Depended on KiddCheck v1.4 spec, replaced by v2.4 bypass in `ENG-8419`. |
 | **TC-09** | AetherLearn | Superseded Premise: `PRM-001` (Complete Gate) | `SUPERSEDED_INVALIDATED` | Invalidation propagates down to Claim `CLM-VPC-01`. |
@@ -82,7 +82,7 @@ The evaluation suite tests 30 distinct compliance and graph-reasoning scenarios 
 | **TC-21** | NexusOps | Section 9(1) - Minor Parental Consent | `EXCLUDED_NON_APPLICABLE` | B2B APM platform processes no children's data; verified zero underage users. |
 | **TC-22** | NexusOps | Section 9(3) - Child Behavioral Tracking | `EXCLUDED_NON_APPLICABLE` | B2B platform tracking server metrics, not minor human behavior. |
 | **TC-23** | NexusOps | Rule 10 - Child VPC Mechanisms | `EXCLUDED_NON_APPLICABLE` | Non-applicable due to absence of child data categories in schema. |
-| **TC-24** | NexusOps | Section 4 - Grounds for Processing Personal Data | `VERIFIED_COMPLIANT` | Corporate admin users processed under legitimate employment/contract purposes. |
+| **TC-24** | NexusOps | Section 4 - Grounds for Processing Personal Data | `MODELED_CONTROL_TESTS_PASS` | Corporate admin users processed under legitimate employment/contract purposes. |
 | **TC-25** | NexusOps | Rule 4 - Notice to Corporate Admins | `FUTURE_OBLIGATION_PREPARING` | Notice required for corporate console users by 14 Nov 2026. |
 | **TC-26** | Cross-Tenant | Data Isolation Leakage Check | `ISOLATED_SECURE` | Querying NexusOps graph for AetherLearn claims yields zero rows and no graph cross-contamination. |
 | **TC-27** | AetherLearn | Remediation Action: `PATCH-KIDDCHECK-01` | `ACTION_ELIGIBLE` | Patch disabling guest bypass and setting strict handshake ready for human review. |

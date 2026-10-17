@@ -320,12 +320,18 @@ def get_tenant_full_state(tenant_id: str = Depends(get_tenant_from_session_or_ke
 
         q_vendor = "MATCH (v:Vendor {tenant_id: $tenant_id}) RETURN v.vendor_id, v.name, v.enforce_strict_guardian_handshake"
         res_v = g.ro_query(q_vendor, {"tenant_id": tenant_id}).result_set
-        vendor = {"vendor_id": res_v[0][0], "name": res_v[0][1], "strict_handshake": res_v[0][2]} if res_v else {}
-    except Exception:
-        contradictions = []
-        claims = []
-        tasks = []
-        vendor = {"vendor_id": "VND_01", "name": "KiddCheck ID", "strict_handshake": False}
+        vendor = {"vendor_id": res_v[0][0], "name": res_v[0][1], "strict_handshake": res_v[0][2]} if res_v else None
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "GRAPH_QUERY_FAILURE",
+                "message": str(e),
+                "tenant_id": tenant_id
+            }
+        )
 
     return {
         "tenant_id": tenant_id,

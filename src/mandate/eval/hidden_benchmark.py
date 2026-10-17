@@ -94,16 +94,20 @@ RESERVED_HIDDEN_CASES: List[Dict[str, Any]] = [
     }
 ]
 
-def run_hidden_benchmark() -> Dict[str, Any]:
+def run_hidden_benchmark(prefix: str = "reserved_suite") -> Dict[str, Any]:
     from src.mandate.schema.seed_public import seed_regulatory_corpus
     from src.mandate.schema.seed_tenants import seed_flagship_aetherlearn, seed_isolated_nexusops
+    
+    suite_aether = f"{prefix}_aetherlearn"
+    suite_nexus = f"{prefix}_nexusops"
+
     mgr = FalkorClientManager()
     seed_regulatory_corpus(mgr)
-    seed_flagship_aetherlearn(mgr)
-    seed_isolated_nexusops(mgr)
+    seed_flagship_aetherlearn(mgr, tenant_id=suite_aether)
+    seed_isolated_nexusops(mgr, tenant_id=suite_nexus)
     g_public = mgr.get_public_graph()
-    g_aether = mgr.get_tenant_graph("aetherlearn")
-    g_nexus = mgr.get_tenant_graph("nexusops")
+    g_aether = mgr.get_tenant_graph(suite_aether)
+    g_nexus = mgr.get_tenant_graph(suite_nexus)
     total = len(RESERVED_HIDDEN_CASES)
     passed = 0
     results = []
@@ -138,8 +142,8 @@ def run_hidden_benchmark() -> Dict[str, Any]:
             executed_query = "MATCH (p:Provision {provision_id: 'DPDP_RULES_2025_RULE_4'})-[:GOVERNED_BY]->(c:Commencement) RETURN p.title, c.basis"
             res = g_public.ro_query(executed_query).result_set
             # Verify internal flows are not registered as external CMs
-            cm_check_q = "MATCH (df:DataFlow {tenant_id: 'aetherlearn'}) WHERE df.is_consent_manager = true RETURN count(df)"
-            res_cm = g_aether.ro_query(cm_check_q).result_set
+            cm_check_q = "MATCH (df:DataFlow {tenant_id: $tenant_id}) WHERE df.is_consent_manager = true RETURN count(df)"
+            res_cm = g_aether.ro_query(cm_check_q, {"tenant_id": suite_aether}).result_set
             cm_flows = res_cm[0][0] if res_cm else 0
             if cm_flows == 0 and len(res) > 0:
                 actual = "MODELED_CONTROL_TESTS_PASS"
@@ -155,13 +159,13 @@ def run_hidden_benchmark() -> Dict[str, Any]:
             prov_status = res_prov[0][0] if res_prov else None
 
             flow_ctl_q = """
-            MATCH (df:DataFlow {tenant_id: 'aetherlearn', flow_id: 'DF_04'})
-            MATCH (ctl:Control {tenant_id: 'aetherlearn', control_id: 'CTL_RESEARCH_ANONYMIZATION'})-[:COVERS_FLOW]->(df)
+            MATCH (df:DataFlow {tenant_id: $tenant_id, flow_id: 'DF_04'})
+            MATCH (ctl:Control {tenant_id: $tenant_id, control_id: 'CTL_RESEARCH_ANONYMIZATION'})-[:COVERS_FLOW]->(df)
             WHERE ctl.status = 'ACTIVE_VERIFIED'
             RETURN df.flow_id, ctl.control_id, ctl.status
             """
             executed_query = flow_ctl_q.strip()
-            res_res = g_aether.ro_query(flow_ctl_q).result_set
+            res_res = g_aether.ro_query(flow_ctl_q, {"tenant_id": suite_aether}).result_set
 
             if prov_status == 'IN_FORCE' and len(res_res) > 0:
                 actual = "MODELED_CONTROL_TESTS_PASS"
@@ -179,44 +183,46 @@ def run_hidden_benchmark() -> Dict[str, Any]:
 
         # Case 5: Multi-tenant tenant segregation
         elif cid == "HIDDEN-05":
-            executed_query = "MATCH (c:Claim {tenant_id: 'aetherlearn'}) RETURN count(c)"
-            res_leak = g_nexus.ro_query(executed_query).result_set[0][0]
+            executed_query = "MATCH (c:Claim {tenant_id: $tenant_id}) RETURN count(c)"
+            res_leak = g_nexus.ro_query(executed_query, {"tenant_id": suite_aether}).result_set[0][0]
             actual = "MODELED_CONTROL_TESTS_PASS" if res_leak == 0 else "FAIL_LEAKAGE"
             detail_msg = f"NexusOps cross-tenant query for AetherLearn claims returned {res_leak} nodes"
 
         # Case 6: Expired server approval rejection
         elif cid == "HIDDEN-06":
-            executed_query = "MATCH (a:ApprovalRecord {tenant_id: 'aetherlearn'}) WHERE a.expires_at < timestamp() RETURN count(a)"
-            res_exp = g_aether.ro_query(executed_query).result_set
+            executed_query = "MATCH (a:ApprovalRecord {tenant_id: $tenant_id}) WHERE a.expires_at < timestamp() RETURN count(a)"
+            res_exp = g_aether.ro_query(executed_query, {"tenant_id": suite_aether}).result_set
             tools = GraphTools(mgr)
             # Create dedicated task and proposal for Case 6
             q_setup_06 = """
-            MERGE (t_h6:Task {task_id: 'TSK_HIDDEN_06', tenant_id: 'aetherlearn'})
+            MERGE (t_h6:Task {task_id: 'TSK_HIDDEN_06', tenant_id: $tenant_id})
             SET t_h6.status = 'OPEN', t_h6.lease_version = 0, t_h6.retry_count = 0, t_h6.max_retries = 3
-            MERGE (p_h6:ActionProposal {proposal_id: 'PROP_HIDDEN_06', tenant_id: 'aetherlearn'})
+            MERGE (p_h6:ActionProposal {proposal_id: 'PROP_HIDDEN_06', tenant_id: $tenant_id})
             SET p_h6.status = 'APPROVED', p_h6.evidence_revision = 'REV_EV_ENG_8419_v1',
                 p_h6.target_vendor_id = 'VND_01', p_h6.target_flow_id = 'DF_01',
-                p_h6.enforce_strict_guardian_handshake = true
+                p_h6.enforce_strict_guardian_handshake = true,
+                p_h6.mutation_sig = 'MUT_SIG_H6'
             MERGE (t_h6)-[:EXECUTES_PROPOSAL]->(p_h6)
-            MERGE (clm:Claim {claim_id: 'CLM_VPC_01', tenant_id: 'aetherlearn'})
-            MERGE (ev:Evidence {evidence_id: 'EV_TICKET_ENG_8419', tenant_id: 'aetherlearn'})
+            MERGE (clm:Claim {claim_id: 'CLM_VPC_01', tenant_id: $tenant_id})
+            MERGE (ev:Evidence {evidence_id: 'EV_TICKET_ENG_8419', tenant_id: $tenant_id})
             MERGE (p_h6)-[:REMEDIES_CLAIM]->(clm)
             MERGE (p_h6)-[:BASED_ON_EVIDENCE]->(ev)
             CREATE (a_exp:ApprovalRecord {
                 token: 'APPR_EXPIRED_HIDDEN_06',
-                tenant_id: 'aetherlearn',
+                tenant_id: $tenant_id,
                 reviewer_id: 'officer_alice',
                 evidence_revision: p_h6.evidence_revision,
+                mutation_sig: 'MUT_SIG_H6',
                 created_at: timestamp() - 100000,
                 expires_at: timestamp() - 50000,
                 used: false
             })
             MERGE (a_exp)-[:APPROVES_PROPOSAL]->(p_h6)
             """
-            g_aether.query(q_setup_06)
-            lease = tools.acquire_task_lease("aetherlearn", "TSK_HIDDEN_06", "agent_worker_hidden_06", lease_duration_ms=5000)
+            g_aether.query(q_setup_06, {"tenant_id": suite_aether})
+            lease = tools.acquire_task_lease(suite_aether, "TSK_HIDDEN_06", "agent_worker_hidden_06", lease_duration_ms=5000)
             apply_attempt = tools.apply_remediation_patch(
-                tenant_id="aetherlearn",
+                tenant_id=suite_aether,
                 task_id="TSK_HIDDEN_06",
                 proposal_id="PROP_HIDDEN_06",
                 agent_id="agent_worker_hidden_06",
@@ -237,30 +243,30 @@ def run_hidden_benchmark() -> Dict[str, Any]:
             executed_query = "MATCH (t:Task {task_id: 'TSK_HIDDEN_07'}) RETURN t.lease_version"
             tools = GraphTools(mgr)
             q_setup_07 = """
-            MERGE (t_h7:Task {task_id: 'TSK_HIDDEN_07', tenant_id: 'aetherlearn'})
+            MERGE (t_h7:Task {task_id: 'TSK_HIDDEN_07', tenant_id: $tenant_id})
             SET t_h7.status = 'OPEN', t_h7.lease_version = 0, t_h7.retry_count = 0, t_h7.max_retries = 3
-            MERGE (p_h7:ActionProposal {proposal_id: 'PROP_HIDDEN_07', tenant_id: 'aetherlearn'})
+            MERGE (p_h7:ActionProposal {proposal_id: 'PROP_HIDDEN_07', tenant_id: $tenant_id})
             SET p_h7.status = 'APPROVED', p_h7.evidence_revision = 'REV_EV_ENG_8419_v1',
                 p_h7.target_vendor_id = 'VND_01', p_h7.target_flow_id = 'DF_01',
                 p_h7.enforce_strict_guardian_handshake = true
             MERGE (t_h7)-[:EXECUTES_PROPOSAL]->(p_h7)
-            MERGE (clm:Claim {claim_id: 'CLM_VPC_01', tenant_id: 'aetherlearn'})
-            MERGE (ev:Evidence {evidence_id: 'EV_TICKET_ENG_8419', tenant_id: 'aetherlearn'})
+            MERGE (clm:Claim {claim_id: 'CLM_VPC_01', tenant_id: $tenant_id})
+            MERGE (ev:Evidence {evidence_id: 'EV_TICKET_ENG_8419', tenant_id: $tenant_id})
             MERGE (p_h7)-[:REMEDIES_CLAIM]->(clm)
             MERGE (p_h7)-[:BASED_ON_EVIDENCE]->(ev)
             """
-            g_aether.query(q_setup_07)
-            l1 = tools.acquire_task_lease("aetherlearn", "TSK_HIDDEN_07", "worker_primary", lease_duration_ms=5000)
+            g_aether.query(q_setup_07, {"tenant_id": suite_aether})
+            l1 = tools.acquire_task_lease(suite_aether, "TSK_HIDDEN_07", "worker_primary", lease_duration_ms=5000)
             # Force expiration / simulate second worker usurping lease
-            g_aether.query("MATCH (t:Task {task_id: 'TSK_HIDDEN_07'}) SET t.lease_expires_at = timestamp() - 1000")
-            l2 = tools.acquire_task_lease("aetherlearn", "TSK_HIDDEN_07", "worker_usurper", lease_duration_ms=5000)
+            g_aether.query("MATCH (t:Task {task_id: 'TSK_HIDDEN_07', tenant_id: $tenant_id}) SET t.lease_expires_at = timestamp() - 1000", {"tenant_id": suite_aether})
+            l2 = tools.acquire_task_lease(suite_aether, "TSK_HIDDEN_07", "worker_usurper", lease_duration_ms=5000)
             
             # Create valid approval for proposal
-            appr = tools.create_proposal_approval("aetherlearn", "PROP_HIDDEN_07", "officer_alice", ["aetherlearn"])
+            appr = tools.create_proposal_approval(suite_aether, "PROP_HIDDEN_07", "officer_alice", [suite_aether])
             
             # Worker 1 (now zombie) attempts action with stale token
             zombie_apply = tools.apply_remediation_patch(
-                tenant_id="aetherlearn",
+                tenant_id=suite_aether,
                 task_id="TSK_HIDDEN_07",
                 proposal_id="PROP_HIDDEN_07",
                 agent_id="worker_primary",
@@ -271,8 +277,8 @@ def run_hidden_benchmark() -> Dict[str, Any]:
             )
             # Clean up test nodes
             g_aether.query("MATCH (a:ApprovalRecord {token: $tok}) DETACH DELETE a", {"tok": appr["approval_token"]})
-            g_aether.query("MATCH (t:Task {task_id: 'TSK_HIDDEN_07'}) DETACH DELETE t")
-            g_aether.query("MATCH (p:ActionProposal {proposal_id: 'PROP_HIDDEN_07'}) DETACH DELETE p")
+            g_aether.query("MATCH (t:Task {task_id: 'TSK_HIDDEN_07', tenant_id: $tenant_id}) DETACH DELETE t", {"tenant_id": suite_aether})
+            g_aether.query("MATCH (p:ActionProposal {proposal_id: 'PROP_HIDDEN_07', tenant_id: $tenant_id}) DETACH DELETE p", {"tenant_id": suite_aether})
             actual = "MODELED_CONTROL_TESTS_PASS" if (not zombie_apply["success"] and zombie_apply["reason"] in ["FENCE_TOKEN_STALE", "STALE_FENCE_TOKEN_REJECTED"]) else "FAIL_ZOMBIE_NOT_BLOCKED"
             detail_msg = f"Zombie apply with token {l1['fence_token']} against lease {l2['fence_token']} returned {zombie_apply['reason']}"
 
@@ -280,12 +286,12 @@ def run_hidden_benchmark() -> Dict[str, Any]:
         elif cid == "HIDDEN-08":
             # Check episodic history: verify premise invalidation history audit events and superseded conclusions
             executed_query = """
-            MATCH (clm:Claim {tenant_id: 'aetherlearn'})-[:HAS_INVALIDATION_HISTORY]->(evt:InvalidationEvent)
+            MATCH (clm:Claim {tenant_id: $tenant_id})-[:HAS_INVALIDATION_HISTORY]->(evt:InvalidationEvent)
             RETURN count(evt)
             """
-            res_inv = g_aether.ro_query(executed_query).result_set[0][0]
+            res_inv = g_aether.ro_query(executed_query, {"tenant_id": suite_aether}).result_set[0][0]
             # Also check if any cross-session superseded conclusion exists
-            res_sup = g_aether.ro_query("MATCH (c:AssessmentConclusion {tenant_id: 'aetherlearn'})-[:SUPERSEDES]->(p:AssessmentConclusion) RETURN count(c)").result_set[0][0]
+            res_sup = g_aether.ro_query("MATCH (c:AssessmentConclusion {tenant_id: $tenant_id})-[:SUPERSEDES]->(p:AssessmentConclusion) RETURN count(c)", {"tenant_id": suite_aether}).result_set[0][0]
             if res_inv > 0 or res_sup > 0:
                 actual = "MODELED_CONTROL_TESTS_PASS"
             else:

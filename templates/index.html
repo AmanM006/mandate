@@ -321,28 +321,64 @@
 
         async function refreshState() {
             await ensureAuth();
-            const res = await fetch('/api/v1/tenant/state');
-            const data = await res.json();
+            const caseBadge = document.getElementById('caseStatusBadge');
+            let data = null;
+            let suite = null;
+
+            try {
+                const res = await fetch('/api/v1/tenant/state');
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                data = await res.json();
+
+                const suiteRes = await fetch('/api/v1/tenant/behavioral-suite');
+                if (suiteRes.ok) {
+                    const suiteData = await suiteRes.json();
+                    suite = suiteData.suite_result;
+                }
+            } catch (err) {
+                console.error("Failed to load tenant state:", err);
+                if (caseBadge) {
+                    caseBadge.innerText = "DATA_UNAVAILABLE";
+                    caseBadge.className = "text-xs px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-400 border border-zinc-700 font-mono font-medium";
+                }
+                const contBox = document.getElementById('contradictionsContainer');
+                if (contBox) {
+                    contBox.innerHTML = `<div class="text-xs font-mono text-rose-400 p-3.5 bg-black rounded-lg border border-rose-900/60">Graph query error or offline: ${err.message}. Showing DATA_UNAVAILABLE.</div>`;
+                }
+                return;
+            }
             
             // Set dropdown value
             document.getElementById('tenantSelect').value = data.tenant_id;
 
+            // Observed metrics
+            const bypassCount = (data.contradictions || []).filter(c => c.bypassed_control).length;
+            const hasHandshake = data.vendor && data.vendor.strict_handshake === true;
+            const hasClaims = (data.claims || []).length > 0;
+            const suitePassed = suite ? suite.all_passed : false;
+
+            // Case Badge Assessment
+            if (!hasClaims && bypassCount === 0) {
+                caseBadge.innerText = "INSUFFICIENT_EVIDENCE";
+                caseBadge.className = "text-xs px-2.5 py-1 rounded-full bg-zinc-900 text-zinc-400 border border-zinc-800 font-mono font-medium";
+            } else if (bypassCount > 0 || !hasHandshake || !suitePassed) {
+                caseBadge.innerText = "FAILING_CONTROLS_DETECTED";
+                caseBadge.className = "text-xs px-2.5 py-1 rounded-full bg-rose-950/70 text-rose-400 border border-rose-800/60 font-mono font-medium";
+            } else {
+                caseBadge.innerText = "MODELED_CONTROL_TESTS_PASS";
+                caseBadge.className = "text-xs px-2.5 py-1 rounded-full bg-emerald-950/70 text-emerald-400 border border-emerald-800/60 font-mono font-medium";
+            }
+
             // Render Contradictions matching traverse_contradictions record structure
             const contBox = document.getElementById('contradictionsContainer');
-            const caseBadge = document.getElementById('caseStatusBadge');
+            const activeConflicts = (data.contradictions || []).filter(c => c.bypassed_control || c.contradictory_evidence.length > 0);
 
-            if (!data.contradictions || data.contradictions.length === 0) {
-                contBox.innerHTML = '<div class="text-xs font-mono text-emerald-400 p-3.5 bg-black rounded-lg border border-emerald-900/60 flex items-center gap-2"><span>✓</span> No active contradictions found in this tenant graph. Zero leakage detected.</div>';
-                if (caseBadge) {
-                    caseBadge.innerText = "VERIFIED_COMPLIANT";
-                    caseBadge.className = "text-xs px-2.5 py-1 rounded-full bg-emerald-950/70 text-emerald-400 border border-emerald-800/60 font-mono font-medium";
-                }
+            if (activeConflicts.length === 0) {
+                contBox.innerHTML = '<div class="text-xs font-mono text-emerald-400 p-3.5 bg-black rounded-lg border border-emerald-900/60 flex items-center gap-2"><span>✓</span> Zero active bypass edges detected across this tenant namespace.</div>';
             } else {
-                if (caseBadge) {
-                    caseBadge.innerText = "DISCREPANCY_DETECTED";
-                    caseBadge.className = "text-xs px-2.5 py-1 rounded-full bg-rose-950/70 text-rose-400 border border-rose-800/60 font-mono font-medium";
-                }
-                contBox.innerHTML = data.contradictions.map(c => `
+                contBox.innerHTML = activeConflicts.map(c => `
                     <div class="p-3.5 bg-black border border-rose-900/70 rounded-lg space-y-1.5 font-mono">
                         <div class="flex justify-between items-center">
                             <span class="text-xs text-rose-400 font-bold">[!] CONFLICT: ${c.bypassed_control || c.active_control || 'Control Gate'}</span>

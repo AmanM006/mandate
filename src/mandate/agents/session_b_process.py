@@ -91,10 +91,11 @@ def run_agent_session_b():
     ev_rev = res_prop[0][1]
     print(f"[{session_id}] Successfully created {fresh_prop_id} bound to evidence revision {ev_rev}.")
 
-    # 6. Request and obtain authenticated officer approval via HTTP API session
-    # Simulates genuine human compliance officer review flow:
-    # Officer Alice logs in, reviews proposal parameters & evidence, and signs the ApprovalRecord.
-    print(f"[{session_id}] Submitting proposal to authenticated officer review flow (Officer Alice via API)...")
+    # 6. Request and obtain authenticated officer approval
+    # NOTE: This step represents a SIMULATED OFFICER APPROVAL in automated batch runs,
+    # where Officer Alice authenticates via TestClient and issues a cryptographically-bound ApprovalRecord.
+    # For live interactive evaluation, the user reviews proposal parameters and clicks 'Authorize' in the Web Console.
+    print(f"[{session_id}] Submitting proposal to simulated officer review flow (Officer Alice via API TestClient)...")
     from fastapi.testclient import TestClient
     from src.mandate.api import app as fastapi_app
     api_client = TestClient(fastapi_app)
