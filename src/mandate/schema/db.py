@@ -22,12 +22,48 @@ class FalkorClientManager:
 
     @property
     def client(self) -> FalkorDB:
-        if self._client is None:
-            self._client = FalkorDB(
-                host=self.host,
-                port=self.port,
-                password=self.password
-            )
+        if self._client is not None:
+            try:
+                self._client.connection.ping()
+                return self._client
+            except Exception:
+                self._client = None
+
+        # Resolve candidate hosts (prefer local, fallback to WSL bridge on Windows)
+        candidate_hosts = [self.host]
+        if self.host in ("127.0.0.1", "localhost"):
+            try:
+                import subprocess
+                ps_cmd = '(Get-NetNeighbor -InterfaceAlias "*vEthernet*WSL*" | Where-Object { $_.IPAddress -match "^\\d+\\.\\d+\\.\\d+\\.\\d+$" -and $_.State -eq "Reachable" }).IPAddress'
+                wsl_ip = subprocess.check_output(
+                    ["powershell", "-NoProfile", "-Command", ps_cmd],
+                    timeout=1.5
+                ).decode("utf-8").strip()
+                if wsl_ip and wsl_ip not in candidate_hosts:
+                    candidate_hosts.append(wsl_ip)
+            except Exception:
+                pass
+
+        last_err = None
+        for host in candidate_hosts:
+            for attempt in range(2):
+                try:
+                    cl = FalkorDB(
+                        host=host,
+                        port=self.port,
+                        password=self.password
+                    )
+                    cl.connection.ping()
+                    self._client = cl
+                    self.host = host
+                    return self._client
+                except Exception as e:
+                    last_err = e
+                    import time
+                    time.sleep(0.05)
+
+        if last_err:
+            raise last_err
         return self._client
 
     def get_tenant_graph(self, tenant_id: str) -> Graph:
