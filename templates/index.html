@@ -544,8 +544,49 @@
             btn.disabled = true;
             btn.innerText = "Acquiring Monotonic Fence Token...";
 
-            const targetTaskId = window.__activeTaskId || "TSK_REMED_01";
-            const targetPropId = window.__activeProposalId || "PROP_REMED_01";
+            // Dynamically fetch latest state to guarantee the exact eligible task and proposal
+            let targetTaskId = window.__activeTaskId;
+            let targetPropId = window.__activeProposalId;
+            let targetEvRev = window.__activeEvidenceRevision;
+
+            if (!targetTaskId || !targetPropId) {
+                try {
+                    const stResp = await fetch('/api/v1/tenant/state');
+                    if (stResp.ok) {
+                        const stData = await stResp.json();
+                        const eligible = stData.tasks ? stData.tasks.find(t => 
+                            t.status === 'OPEN' && 
+                            t.proposal && 
+                            t.proposal.status !== 'INELIGIBLE_SUPERSEDED' && 
+                            t.proposal.status !== 'APPLIED_COMMITTED' &&
+                            t.proposal.status !== 'REJECTED'
+                        ) : null;
+                        if (eligible) {
+                            targetTaskId = eligible.task_id;
+                            targetPropId = eligible.proposal.proposal_id;
+                            targetEvRev = eligible.proposal.evidence_revision;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to query fresh state:", e);
+                }
+            }
+
+            if (!targetTaskId || !targetPropId) {
+                const dispTask = document.getElementById('displayTaskId');
+                const dispProp = document.getElementById('displayPropId');
+                if (dispTask && dispTask.innerText !== 'NONE_PENDING') targetTaskId = dispTask.innerText.trim();
+                if (dispProp && dispProp.innerText !== 'NONE_ELIGIBLE') targetPropId = dispProp.innerText.trim();
+            }
+
+            if (!targetTaskId || !targetPropId) {
+                resBox.className = "p-3 rounded-lg text-xs font-mono bg-rose-950/60 text-rose-300 border border-rose-900";
+                resBox.style.display = "block";
+                resBox.innerText = "No eligible OPEN remediation task found to apply.";
+                btn.disabled = false;
+                btn.innerText = "Authorize & Apply Guarded Patch";
+                return;
+            }
 
             // 1. Acquire task lease via server API
             const leaseResp = await fetch('/api/v1/tenant/task/lease', {
@@ -612,7 +653,7 @@
                     fence_token: fenceToken,
                     idempotency_key: "IDEM-CONSOLE-" + Date.now(),
                     human_approval_token: approvalToken,
-                    expected_evidence_revision: window.__activeEvidenceRevision || "REV_EV_ENG_8419_v1"
+                    expected_evidence_revision: targetEvRev || "REV_EV_ENG_8419_v1"
                 })
             });
 
