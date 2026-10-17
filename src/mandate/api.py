@@ -318,7 +318,7 @@ def get_tenant_full_state(tenant_id: str = Depends(get_tenant_from_session_or_ke
                 } if r[5] else None
             })
 
-        q_vendor = "MATCH (v:Vendor {tenant_id: $tenant_id}) RETURN v.vendor_id, v.name, v.enforce_strict_guardian_handshake"
+        q_vendor = "MATCH (v:Vendor {vendor_id: 'VND_01', tenant_id: $tenant_id}) RETURN v.vendor_id, v.name, v.enforce_strict_guardian_handshake"
         res_v = g.ro_query(q_vendor, {"tenant_id": tenant_id}).result_set
         vendor = {"vendor_id": res_v[0][0], "name": res_v[0][1], "strict_handshake": res_v[0][2]} if res_v else None
     except Exception as e:

@@ -54,17 +54,16 @@ def run_agent_session_a():
         status: 'ACTIVE_RECORD'
     })
     MERGE (c)-[:EVALUATES_CLAIM]->(clm)
-    CREATE (t:Task {
-        task_id: 'TSK_HANDOFF_01',
-        tenant_id: 'aetherlearn',
-        type: 'APPLY_REMEDIATION',
-        status: 'OPEN',
-        lease_version: 0,
-        retry_count: 0,
-        handoff_from_session: $sid,
-        target_conclusion_id: $cid,
-        created_at: timestamp()
-    })
+    MERGE (t:Task {task_id: 'TSK_HANDOFF_01', tenant_id: 'aetherlearn'})
+    SET t.type = 'APPLY_REMEDIATION',
+        t.status = 'OPEN',
+        t.lease_version = 0,
+        t.retry_count = 0,
+        t.owner_agent = null,
+        t.lease_expires_at = null,
+        t.handoff_from_session = $sid,
+        t.target_conclusion_id = $cid,
+        t.created_at = timestamp()
     RETURN c.conclusion_id, t.task_id
     """
     cid = f"CONC_{uuid.uuid4().hex[:8]}"

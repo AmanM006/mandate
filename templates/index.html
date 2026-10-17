@@ -203,6 +203,10 @@
                 <div class="mt-4 space-y-3 text-xs">
                     <div class="p-3.5 bg-black rounded-lg border border-zinc-900 space-y-2 font-mono">
                         <div class="flex justify-between text-zinc-400">
+                            <span>Remediation Task:</span>
+                            <span id="displayTaskId" class="text-zinc-200 font-bold">TSK_REMED_01</span>
+                        </div>
+                        <div class="flex justify-between text-zinc-400">
                             <span>Target Proposal:</span>
                             <span id="displayPropId" class="text-zinc-200 font-bold">PROP_REMED_01</span>
                         </div>
@@ -420,26 +424,60 @@
             `;
 
             // Detect active proposal ID, task ID, and evidence revision
-            let activePropId = "PROP_REMED_01";
-            let activeTaskId = "TSK_REMED_01";
+            // STRICT FILTER: Select only an eligible proposal attached to an OPEN task.
+            // Never select invalidated proposals (INELIGIBLE_SUPERSEDED) or completed ones (APPLIED_COMMITTED).
+            let activePropId = null;
+            let activeTaskId = null;
             let activeEvRev = "REV_EV_ENG_8419_v1";
+
             if (data.tasks && data.tasks.length > 0) {
-                const targetTask = data.tasks.find(t => t.proposal && t.proposal.status !== 'APPLIED_COMMITTED') || data.tasks[0];
+                const targetTask = data.tasks.find(t => 
+                    t.status === 'OPEN' && 
+                    t.proposal && 
+                    t.proposal.status !== 'INELIGIBLE_SUPERSEDED' && 
+                    t.proposal.status !== 'APPLIED_COMMITTED' &&
+                    t.proposal.status !== 'REJECTED'
+                );
                 if (targetTask) {
                     activeTaskId = targetTask.task_id;
-                    if (targetTask.proposal) {
-                        activePropId = targetTask.proposal.proposal_id;
-                        if (targetTask.proposal.evidence_revision) {
-                            activeEvRev = targetTask.proposal.evidence_revision;
-                        }
+                    activePropId = targetTask.proposal.proposal_id;
+                    if (targetTask.proposal.evidence_revision) {
+                        activeEvRev = targetTask.proposal.evidence_revision;
                     }
                 }
             }
+
             window.__activeProposalId = activePropId;
             window.__activeTaskId = activeTaskId;
             window.__activeEvidenceRevision = activeEvRev;
-            if (document.getElementById('displayPropId')) {
-                document.getElementById('displayPropId').innerText = activePropId;
+
+            const displayTaskEl = document.getElementById('displayTaskId');
+            const displayPropEl = document.getElementById('displayPropId');
+            const proposalBadge = document.getElementById('proposalBadge');
+            const applyBtn = document.getElementById('applyPatchBtn');
+
+            if (activeTaskId && activePropId) {
+                if (displayTaskEl) displayTaskEl.innerText = activeTaskId;
+                if (displayPropEl) displayPropEl.innerText = activePropId;
+                if (proposalBadge) {
+                    proposalBadge.innerText = "PROPOSAL_STAGED";
+                    proposalBadge.className = "text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-mono font-medium";
+                }
+                if (applyBtn) {
+                    applyBtn.disabled = false;
+                    applyBtn.innerText = "Authorize & Apply Guarded Patch";
+                }
+            } else {
+                if (displayTaskEl) displayTaskEl.innerText = "NONE_PENDING";
+                if (displayPropEl) displayPropEl.innerText = "NONE_ELIGIBLE";
+                if (proposalBadge) {
+                    proposalBadge.innerText = "NO_STAGED_PROPOSAL";
+                    proposalBadge.className = "text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-zinc-500 border border-zinc-800 font-mono font-medium";
+                }
+                if (applyBtn) {
+                    applyBtn.disabled = true;
+                    applyBtn.innerText = "No Pending Eligible Proposal";
+                }
             }
 
             // Refresh Behavioral Suite

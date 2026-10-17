@@ -62,40 +62,63 @@ def run_agent_session_b(pause_for_ui: bool = False):
     # 5. Autonomous Action Proposal Creation:
     # Notice that PRM_001 invalidation cascaded to PROP_REMED_01 (marked INELIGIBLE_SUPERSEDED).
     # Rather than privileged mutation, Agent B drafts a fresh proposal PROP_REMED_02 tied to
-    # current active evidence REV_EV_ENG_8419_v1 to fix the bypass on DF_01.
-    print(f"[{session_id}] Drafting fresh proposal PROP_REMED_02 addressing current evidence...")
+    # current active evidence REV_EV_ENG_8419_v1.
+    # To avoid lease collisions with human console reviewers, Session B completes its own
+    # investigation task TSK_HANDOFF_01 and creates a dedicated OPEN task TSK_BROWSER_REMED_01
+    # for the compliance officer to review and apply via the Web Console.
+    print(f"[{session_id}] Completing investigation record TSK_HANDOFF_01...")
+    tools.complete_task(
+        tenant_id="aetherlearn",
+        task_id="TSK_HANDOFF_01",
+        agent_id="agent_worker_b",
+        fence_token=lease["fence_token"],
+        idempotency_key=f"IDEM-HANDOFF-COMPL-{session_id}"
+    )
+
+    print(f"[{session_id}] Drafting fresh proposal PROP_REMED_02 on new OPEN task TSK_BROWSER_REMED_01...")
     fresh_prop_id = "PROP_REMED_02"
+    browser_task_id = "TSK_BROWSER_REMED_01"
     q_create_prop = """
     MATCH (clm:Claim {claim_id: 'CLM_VPC_01', tenant_id: 'aetherlearn'})
     MATCH (ev:Evidence {evidence_id: 'EV_TICKET_ENG_8419', tenant_id: 'aetherlearn'})
-    MATCH (t:Task {task_id: 'TSK_HANDOFF_01', tenant_id: 'aetherlearn'})
-    CREATE (p:ActionProposal {
-        proposal_id: $prop_id,
-        tenant_id: 'aetherlearn',
-        target_claim_id: 'CLM_VPC_01',
-        target_vendor_id: 'VND_01',
-        target_flow_id: 'DF_01',
-        status: 'PENDING_APPROVAL',
-        enforce_strict_guardian_handshake: true,
-        remove_guest_bypass: true,
-        evidence_revision: ev.evidence_revision,
-        created_at: timestamp()
-    })
-    CREATE (p)-[:REMEDIES_CLAIM]->(clm)
-    CREATE (p)-[:BASED_ON_EVIDENCE]->(ev)
-    CREATE (t)-[:EXECUTES_PROPOSAL]->(p)
-    RETURN p.proposal_id, ev.evidence_revision
+    MERGE (t_ui:Task {task_id: $task_id, tenant_id: 'aetherlearn'})
+    SET t_ui.type = 'APPLY_REMEDIATION',
+        t_ui.status = 'OPEN',
+        t_ui.lease_version = 0,
+        t_ui.retry_count = 0,
+        t_ui.owner_agent = null,
+        t_ui.lease_expires_at = null,
+        t_ui.handoff_from_session = $sid,
+        t_ui.target_claim_id = 'CLM_VPC_01',
+        t_ui.created_at = timestamp()
+    MERGE (p:ActionProposal {proposal_id: $prop_id, tenant_id: 'aetherlearn'})
+    SET p.target_claim_id = 'CLM_VPC_01',
+        p.target_vendor_id = 'VND_01',
+        p.target_flow_id = 'DF_01',
+        p.status = 'PENDING_APPROVAL',
+        p.enforce_strict_guardian_handshake = true,
+        p.remove_guest_bypass = true,
+        p.evidence_revision = ev.evidence_revision,
+        p.created_at = timestamp()
+    MERGE (p)-[:REMEDIES_CLAIM]->(clm)
+    MERGE (p)-[:BASED_ON_EVIDENCE]->(ev)
+    MERGE (t_ui)-[:EXECUTES_PROPOSAL]->(p)
+    RETURN p.proposal_id, ev.evidence_revision, t_ui.task_id
     """
-    res_prop = g.query(q_create_prop, {"prop_id": fresh_prop_id}).result_set
-    assert len(res_prop) > 0, "Failed to create fresh proposal"
+    res_prop = g.query(q_create_prop, {
+        "prop_id": fresh_prop_id,
+        "task_id": browser_task_id,
+        "sid": session_id
+    }).result_set
+    assert len(res_prop) > 0, "Failed to create fresh proposal and browser remediation task"
     ev_rev = res_prop[0][1]
-    print(f"[{session_id}] Successfully created {fresh_prop_id} bound to evidence revision {ev_rev}.")
+    print(f"[{session_id}] Successfully created {fresh_prop_id} bound to evidence revision {ev_rev} on task {browser_task_id}.")
 
     # 6. Request and obtain authenticated officer approval
     if pause_for_ui:
         print(f"\n[ACTION REQUIRED] Paused for Real Human Officer Review in Web Console:")
         print(f"-> Open http://127.0.0.1:8000 in your browser.")
-        print(f"-> Review staged proposal '{fresh_prop_id}' on task 'TSK_HANDOFF_01'.")
+        print(f"-> Review staged proposal '{fresh_prop_id}' on task '{browser_task_id}'.")
         print(f"-> Click 'Authorize & Apply Guarded Patch' to approve and execute atomically.")
         input("Press [ENTER] after clicking Authorize in the UI to verify the rendered transition...")
         
@@ -119,6 +142,15 @@ def run_agent_session_b(pause_for_ui: bool = False):
         assert login_res.status_code == 200, f"Officer login failed: {login_res.text}"
         alice_csrf = login_res.json()["csrf_token"]
 
+        # Acquire lease on browser_task_id
+        lease_res = api_client.post(
+            "/api/v1/tenant/task/lease",
+            headers={"x-csrf-token": alice_csrf},
+            json={"task_id": browser_task_id, "agent_id": "agent_worker_b", "duration_ms": 15000}
+        )
+        assert lease_res.status_code == 200, f"Failed to lease {browser_task_id}: {lease_res.text}"
+        fresh_fence = lease_res.json()["fence_token"]
+
         # Alice reviews and signs proposal
         appr_resp = api_client.post(
             "/api/v1/tenant/proposal/approve",
@@ -134,10 +166,10 @@ def run_agent_session_b(pause_for_ui: bool = False):
         print(f"[{session_id}] Applying remediation patch via strict atomic Cypher write...")
         apply_res = tools.apply_remediation_patch(
             tenant_id="aetherlearn",
-            task_id="TSK_HANDOFF_01",
+            task_id=browser_task_id,
             proposal_id=fresh_prop_id,
             agent_id="agent_worker_b",
-            fence_token=lease["fence_token"],
+            fence_token=fresh_fence,
             idempotency_key=f"IDEM-PROC2-{uuid.uuid4().hex[:6]}",
             human_approval_token=appr["approval_token"],
             expected_evidence_revision=ev_rev
