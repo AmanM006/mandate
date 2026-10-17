@@ -1,0 +1,18 @@
+{
+  "flows": [
+    {
+      "flow_id": "DF_101",
+      "endpoint": "/v1/ingest/syslog",
+      "protocol": "TCP/TLS",
+      "data_categories": ["CAT_CORP_LOGS"],
+      "description": "Enterprise customer raw syslog and APM metric streaming."
+    },
+    {
+      "flow_id": "DF_103",
+      "endpoint": "/api/v1/intern-seats",
+      "protocol": "HTTPS/REST",
+      "data_categories": ["CAT_APPRENTICE"],
+      "description": "FinCorp customer high-school intern apprenticeship accounts."
+    }
+  ]
+}

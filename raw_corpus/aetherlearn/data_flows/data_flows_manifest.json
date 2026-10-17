@@ -1,0 +1,29 @@
+{
+  "flows": [
+    {
+      "flow_id": "DF_01",
+      "endpoint": "/api/v2/auth/student-signup",
+      "protocol": "HTTPS/REST",
+      "data_categories": ["CAT_CHILD_PROFILE"],
+      "bypasses_control": "CTL_VPC_GATE",
+      "source_commit": "commit 8f19da2 on ENG-8419",
+      "description": "Student registration route with optional Google SSO bypass route."
+    },
+    {
+      "flow_id": "DF_02",
+      "endpoint": "/api/v1/telemetry/events",
+      "protocol": "WSS/JSON",
+      "data_categories": ["CAT_TELEMETRY"],
+      "integrates_with": "VND_02",
+      "description": "High-frequency student problem solving telemetry and keystroke cadence."
+    },
+    {
+      "flow_id": "DF_03",
+      "endpoint": "/api/v2/parent/subscription",
+      "protocol": "HTTPS/REST",
+      "data_categories": ["CAT_BILLING"],
+      "covers_control": "CTL_BILLING_ENCRYPTION",
+      "description": "Parent subscription billing flow processed via Stripe AES-256 GCM encrypted webhook."
+    }
+  ]
+}

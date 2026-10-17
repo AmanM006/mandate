@@ -1,0 +1,425 @@
+[
+  {
+    "case_id": "TC-01",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_ACT_SEC_9_1",
+    "category": "CONFLICTING_INTERNAL_CONTROL",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "CONTRADICTS_CLAIM",
+    "claim_status": "INVALIDATED_STALE",
+    "expected_reason": "Internal policy POL-DPDP-2025-01 asserts mandatory parental gate, but engineering release ENG-8419 added Google SSO Quick Guest Preview bypassing verifiable consent.",
+    "key_entities": [
+      "DF-01",
+      "POL-DPDP-2025-01",
+      "ENG-8419",
+      "VND-01"
+    ]
+  },
+  {
+    "case_id": "TC-02",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_RULES_2025_RULE_10",
+    "category": "FUTURE_COMMENCEMENT",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "CONTRADICTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Rule 10 commences 18 months from gazette (May 2027). Vendor configuration enforce_strict_guardian_handshake=false is a critical readiness gap for future compliance.",
+    "key_entities": [
+      "RULE-10",
+      "VND-01",
+      "CFG-KIDDCHECK-01"
+    ]
+  },
+  {
+    "case_id": "TC-03",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_ACT_SEC_9_3",
+    "category": "APPLICABILITY_UNCERTAIN",
+    "legal_status": "UNRESOLVED_UNCERTAIN",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "TrackPulse SDK logs telemetry on student keyboard cadence. Status is genuinely uncertain under Rule 12 & Fourth Schedule Part A (educational institution) vs commercial edtech product analytics.",
+    "key_entities": [
+      "DF-02",
+      "VND-02",
+      "RULE-12",
+      "FOURTH_SCHEDULE"
+    ]
+  },
+  {
+    "case_id": "TC-04",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_ACT_SEC_9_2",
+    "category": "EVIDENCE_SUPPORTS",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "ModSafe-AI content moderation system evidence confirms automated filtering of harmful content on student discussions.",
+    "key_entities": [
+      "SYS-MODSAFE",
+      "CTL-CONTENT-MOD",
+      "SEC-9-2"
+    ]
+  },
+  {
+    "case_id": "TC-05",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_RULES_2025_RULE_3",
+    "category": "FUTURE_COMMENCEMENT",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Rule 3 (Notice) commences 18 months from gazette (May 2027). Privacy notices in English and Hindi require 22-language translation audit before commencement.",
+    "key_entities": [
+      "RULE-3",
+      "DOC-NOTICE-01"
+    ]
+  },
+  {
+    "case_id": "TC-06",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_RULES_2025_RULE_4",
+    "category": "EXCLUDED_NEAR_MISS",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Near-miss: Rule 4 commences in 12 months (Nov 2026) but applies strictly to Consent Manager entities registering with the Board. AetherLearn is a Data Fiduciary.",
+    "key_entities": [
+      "RULE-4",
+      "ENTITY-AETHERLEARN"
+    ]
+  },
+  {
+    "case_id": "TC-07",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_RULES_2025_CORRIGENDUM",
+    "category": "CORRECTION_VERSIONING",
+    "legal_status": "IN_FORCE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Corrigendum G.S.R. 892(E) dated 10 Dec 2025 makes minor typo and formatting corrections; does not introduce substantive duties or alter commencement timeline.",
+    "key_entities": [
+      "DOC-CORRIGENDUM-892E",
+      "DOC-GSR-846E"
+    ]
+  },
+  {
+    "case_id": "TC-08",
+    "tenant": "aetherlearn",
+    "provision_id": "INTERNAL_DEC_2025_08_ARCH",
+    "category": "SUPERSEDED_INTERNAL",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "CONTRADICTS_CLAIM",
+    "claim_status": "SUPERSEDED",
+    "expected_reason": "Architectural decision approved on KiddCheck v1.4 spec superseded by v2.4 guest preview bypass in ticket ENG-8419.",
+    "key_entities": [
+      "DEC-2025-08-ARCH",
+      "ENG-8419"
+    ]
+  },
+  {
+    "case_id": "TC-09",
+    "tenant": "aetherlearn",
+    "provision_id": "PREMISE_PRM_001",
+    "category": "SELECTIVE_INVALIDATION",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "CONTRADICTS_CLAIM",
+    "claim_status": "INVALIDATED_STALE",
+    "expected_reason": "Premise PRM-001 (unbroken guardian gate) invalidated due to ENG-8419 bypass; multi-premise resolution invalidates Claim CLM-VPC-01 while keeping event audit log.",
+    "key_entities": [
+      "PRM-001",
+      "CLM-VPC-01",
+      "ENG-8419"
+    ]
+  },
+  {
+    "case_id": "TC-10",
+    "tenant": "aetherlearn",
+    "provision_id": "PREMISE_PRM_004",
+    "category": "SELECTIVE_RETENTION",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Premise PRM-004 (Stripe AES-256 GCM billing encryption) is completely independent of VPC gate and remains fully valid and active.",
+    "key_entities": [
+      "PRM-004",
+      "CLM-ENC-04"
+    ]
+  },
+  {
+    "case_id": "TC-11",
+    "tenant": "aetherlearn",
+    "provision_id": "VENDOR_DATA_RETENTION",
+    "category": "INSUFFICIENT_EVIDENCE",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "INSUFFICIENT_EVIDENCE",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Vendor contract metadata lacks data deletion and retention agreement terms; system honestly marks UNRESOLVED.",
+    "key_entities": [
+      "VND-01",
+      "DOC-AGREEMENT-VND01"
+    ]
+  },
+  {
+    "case_id": "TC-12",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_ACT_SEC_6_4",
+    "category": "INSUFFICIENT_EVIDENCE",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "INSUFFICIENT_EVIDENCE",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Parent consent withdrawal UI mockups exist in design files but backend API endpoint is absent from gateway routing table; marked UNRESOLVED.",
+    "key_entities": [
+      "CTL-WITHDRAWAL",
+      "SEC-6-4"
+    ]
+  },
+  {
+    "case_id": "TC-13",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_RULES_2025_RULE_9",
+    "category": "INSUFFICIENT_EVIDENCE",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "INSUFFICIENT_EVIDENCE",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Privacy policy displays general contact email privacy@; formal DPO / authorized contact appointment certificate is pending upload; marked UNRESOLVED under Rule 9.",
+    "key_entities": [
+      "RULE-9",
+      "DOC-NOTICE-01"
+    ]
+  },
+  {
+    "case_id": "TC-14",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_ACT_SEC_16",
+    "category": "INSUFFICIENT_EVIDENCE",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "INSUFFICIENT_EVIDENCE",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Central Government negative list notification for cross-border countries is pending gazette publication; marked UNRESOLVED.",
+    "key_entities": [
+      "SEC-16",
+      "SYS-BACKUP-AWS-SG"
+    ]
+  },
+  {
+    "case_id": "TC-15",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_ACT_SEC_17_1",
+    "category": "EXCLUDED_NEAR_MISS",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Near-miss: Commercial platform handling school subscriptions cannot claim Section 17(1) judicial/law enforcement exemption without a specific court order or warrant.",
+    "key_entities": [
+      "SEC-17-1"
+    ]
+  },
+  {
+    "case_id": "TC-16",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_ACT_SEC_17_2_B",
+    "category": "EXCLUDED_NEAR_MISS",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Near-miss: Commercial course analytics used to prompt students to upgrade are individual-specific and do not qualify for non-profit research under Section 17(2)(b).",
+    "key_entities": [
+      "SEC-17-2-B"
+    ]
+  },
+  {
+    "case_id": "TC-17",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_RULES_2025_RULE_14",
+    "category": "FUTURE_COMMENCEMENT",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Rule 14 (Rights of Data Principals) commences in 18 months (May 2027); company currently lacks automated data erasure workflow.",
+    "key_entities": [
+      "RULE-14",
+      "SYS-ERASURE-QUEUE"
+    ]
+  },
+  {
+    "case_id": "TC-18",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_ACT_SEC_10",
+    "category": "EXCLUDED_NEAR_MISS",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Near-miss: Company processes 450,000 active students, but has not received a formal Central Government gazette notification designating it as a Significant Data Fiduciary.",
+    "key_entities": [
+      "SEC-10"
+    ]
+  },
+  {
+    "case_id": "TC-19",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_RULES_2025_RULE_17_21",
+    "category": "IN_FORCE_BOARD",
+    "legal_status": "IN_FORCE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Rules 17\u201321 (DPBI proceedings) came into force immediately upon publication (Nov 2025); entity has no active Board inquiries or notices.",
+    "key_entities": [
+      "RULE-17-21"
+    ]
+  },
+  {
+    "case_id": "TC-20",
+    "tenant": "aetherlearn",
+    "provision_id": "DPDP_ACT_SEC_17_3",
+    "category": "EXCLUDED_NEAR_MISS",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Near-miss: AetherLearn is a Series B registered entity exceeding 5 years of incorporation; not an eligible DPIIT startup under Section 17(3) exemption notification.",
+    "key_entities": [
+      "SEC-17-3"
+    ]
+  },
+  {
+    "case_id": "TC-21",
+    "tenant": "nexusops",
+    "provision_id": "DPDP_ACT_SEC_9_1",
+    "category": "EXCLUDED_ENTERPRISE",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "B2B enterprise APM SaaS processes strictly corporate server metrics and adult IT credentials; zero minor child data.",
+    "key_entities": [
+      "DF-101",
+      "SEC-9-1"
+    ]
+  },
+  {
+    "case_id": "TC-22",
+    "tenant": "nexusops",
+    "provision_id": "DPDP_ACT_SEC_9_3",
+    "category": "EXCLUDED_ENTERPRISE",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "NexusOps monitors Kubernetes pod resource usage; zero human minor behavioral tracking.",
+    "key_entities": [
+      "DF-101",
+      "SEC-9-3"
+    ]
+  },
+  {
+    "case_id": "TC-23",
+    "tenant": "nexusops",
+    "provision_id": "DPDP_RULES_2025_RULE_10",
+    "category": "EXCLUDED_ENTERPRISE",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Rule 10 non-applicable due to complete absence of minor personal data in enterprise schema.",
+    "key_entities": [
+      "RULE-10"
+    ]
+  },
+  {
+    "case_id": "TC-24",
+    "tenant": "nexusops",
+    "provision_id": "DPDP_ACT_SEC_4",
+    "category": "EVIDENCE_SUPPORTS",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "B2B employee data processing is lawful under enterprise B2B service contract terms.",
+    "key_entities": [
+      "SEC-4",
+      "DOC-TOS-NEXUS"
+    ]
+  },
+  {
+    "case_id": "TC-25",
+    "tenant": "nexusops",
+    "provision_id": "DPDP_RULES_2025_RULE_3",
+    "category": "FUTURE_COMMENCEMENT",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Notice obligations under Rule 3 commence 18 months from gazette (May 2027) for enterprise admin console users.",
+    "key_entities": [
+      "RULE-3",
+      "DOC-NOTICE-NEXUS"
+    ]
+  },
+  {
+    "case_id": "TC-26",
+    "tenant": "nexusops",
+    "provision_id": "NEXUS_ENTERPRISE_INTERN_FLOW",
+    "category": "SUBTLE_APPLICABILITY_FLOW",
+    "legal_status": "UNRESOLVED_UNCERTAIN",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Subtle Case: NexusOps customer 'FinCorp' provisioned 16-17 year old high-school apprenticeship seats on enterprise APM console (/api/v1/intern-seats). Requires guardian consent determination under Section 9(1).",
+    "key_entities": [
+      "DF-103",
+      "SEC-9-1",
+      "ROLE-INTERN"
+    ]
+  },
+  {
+    "case_id": "TC-27",
+    "tenant": "cross_tenant",
+    "provision_id": "MULTI_TENANT_ISOLATION",
+    "category": "TENANT_ISOLATION",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "FalkorDB select_graph boundary ensures zero leakage of AetherLearn claims in NexusOps graph.",
+    "key_entities": [
+      "GRAPH-AETHERLEARN",
+      "GRAPH-NEXUSOPS"
+    ]
+  },
+  {
+    "case_id": "TC-28",
+    "tenant": "aetherlearn",
+    "provision_id": "ACTION_PATCH_VPC",
+    "category": "REMEDIATION_ACTION",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Remediation patch YAML proposes removing Google SSO guest bypass and enforcing strict guardian handshake; ready for human review.",
+    "key_entities": [
+      "PATCH-KIDDCHECK-01",
+      "ENG-8419"
+    ]
+  },
+  {
+    "case_id": "TC-29",
+    "tenant": "aetherlearn",
+    "provision_id": "TASK_HANDOFF_FENCING",
+    "category": "HANDOFF_CONCURRENCY",
+    "legal_status": "EXCLUDED_NON_APPLICABLE",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Task recovery utilizes lease_version fencing token and idempotency key to prevent stale worker double-completion.",
+    "key_entities": [
+      "TSK-REMED-01",
+      "AGENT-REMED-02"
+    ]
+  },
+  {
+    "case_id": "TC-30",
+    "tenant": "aetherlearn",
+    "provision_id": "SESSION_CAUSAL_MEMORY",
+    "category": "EPISODIC_MEMORY",
+    "legal_status": "FUTURE_OBLIGATION",
+    "evidence_status": "SUPPORTS_CLAIM",
+    "claim_status": "VALID_ACTIVE",
+    "expected_reason": "Fresh session inspects historical invalidation event log, correctly identifies superseded premise PRM-001, and refuses to assert outdated compliance.",
+    "key_entities": [
+      "SES-2026-10-02",
+      "CLM-VPC-01",
+      "EVENT-INVAL-01"
+    ]
+  }
+]

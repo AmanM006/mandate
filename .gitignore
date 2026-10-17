@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.env
+.venv/
+env/
+venv/
+*.log
+graph_hacks_repos_p1_to_p20.md
+collect_repos.py

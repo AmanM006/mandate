@@ -1,0 +1,17 @@
+{
+  "vendor_id": "VND_01",
+  "name": "KiddCheck ID",
+  "integration_version": "v2.1.0",
+  "api_endpoint": "https://api.kiddcheck.internal/v2/verify-parent",
+  "parameters": {
+    "enforce_strict_guardian_handshake": false,
+    "fallback_to_self_declaration": true,
+    "verification_method": "sms_otp_and_gov_id",
+    "timeout_seconds": 15
+  },
+  "metadata": {
+    "last_reviewed": "2026-02-18T09:00:00Z",
+    "reviewed_by": "secops@aetherlearn.internal",
+    "notes": "enforce_strict_guardian_handshake set to false during Q1 promotional campaign"
+  }
+}
