@@ -14,20 +14,6 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Auto-seed graph if running in cloud or fresh environment
-    try:
-        from src.mandate.schema.seed_public import seed_regulatory_corpus
-        from src.mandate.schema.seed_tenants import seed_flagship_aetherlearn, seed_isolated_nexusops
-        g = db_mgr.get_tenant_graph("aetherlearn")
-        chk = g.ro_query("MATCH (c:Company {tenant_id: 'aetherlearn'}) RETURN count(c)").result_set
-        if not chk or chk[0][0] == 0:
-            print("[AUTO-SEED] Fresh deployment detected. Seeding regulatory corpus and demo tenants...")
-            seed_regulatory_corpus(db_mgr)
-            seed_flagship_aetherlearn(db_mgr, "aetherlearn")
-            seed_isolated_nexusops(db_mgr, "nexusops")
-            print("[AUTO-SEED] Seeding completed.")
-    except Exception as e:
-        print(f"[AUTO-SEED] Note: Seed check skipped or deferred ({e})")
     yield
 
 app = FastAPI(title="Mandate FalkorDB Compliance Core API & Web Console", version="2.0.0", lifespan=lifespan)
