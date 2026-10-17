@@ -12,11 +12,13 @@ class FalkorClientManager:
         self,
         host: Optional[str] = None,
         port: Optional[int] = None,
-        password: Optional[str] = None
+        password: Optional[str] = None,
+        username: Optional[str] = None
     ):
-        self.host = host or os.getenv("FALKORDB_HOST", "127.0.0.1")
-        self.port = int(port or os.getenv("FALKORDB_PORT", 6379))
-        self.password = password or os.getenv("FALKORDB_PASSWORD", None)
+        self.host = host or os.getenv("FALKORDB_HOST", "REDACTED_FALKORDB_HOST" if os.getenv("RENDER") else "127.0.0.1")
+        self.port = int(port or os.getenv("FALKORDB_PORT", 6379 if os.getenv("RENDER") else 6379))
+        self.password = password or os.getenv("FALKORDB_PASSWORD", "REDACTED_PASSWORD" if os.getenv("RENDER") else None)
+        self.username = username or os.getenv("FALKORDB_USERNAME", "falkordb" if os.getenv("RENDER") else None)
         
         self._client = None
 
@@ -48,11 +50,14 @@ class FalkorClientManager:
         for host in candidate_hosts:
             for attempt in range(2):
                 try:
-                    cl = FalkorDB(
-                        host=host,
-                        port=self.port,
-                        password=self.password
-                    )
+                    conn_kwargs = {
+                        "host": host,
+                        "port": self.port,
+                        "password": self.password
+                    }
+                    if self.username:
+                        conn_kwargs["username"] = self.username
+                    cl = FalkorDB(**conn_kwargs)
                     cl.connection.ping()
                     self._client = cl
                     self.host = host
