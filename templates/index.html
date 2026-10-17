@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandate - Compliance Intelligence Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: { 50: '#f0fdf4', 500: '#22c55e', 900: '#14532d' },
+              falkor: { 500: '#ef4444', 600: '#dc2626' }
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+    <!-- Top Nav -->
+    <header class="border-b border-slate-800 bg-slate-900/90 px-6 py-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center font-bold text-slate-950 shadow-lg shadow-emerald-500/20">M</div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    MANDATE <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">FalkorDB-Native</span>
+                </h1>
+                <p class="text-xs text-slate-400">Multi-Agent Invalidation &amp; Guarded Remediation Engine</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-4">
+            <!-- User Profile / Session Badge -->
+            <div id="authProfileBadge" class="flex items-center bg-slate-900 border border-slate-800 rounded-lg px-3 py-1 text-xs">
+                <span class="text-slate-400 mr-2">Officer:</span>
+                <span id="authUserName" class="text-emerald-400 font-semibold font-mono">Alice Sharma (Officer)</span>
+            </div>
+
+            <!-- Tenant Selector (Bound to session allowed tenants) -->
+            <div class="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-1">
+                <span class="text-xs text-slate-400 px-2 font-mono">TENANT:</span>
+                <select id="tenantSelect" onchange="switchTenant(this.value)" class="bg-slate-900 text-xs text-emerald-400 font-semibold rounded px-2 py-1 outline-none border border-slate-700">
+                    <option value="aetherlearn">aetherlearn (Flagship EdTech)</option>
+                    <option value="nexusops">nexusops (Isolated Cloud Tenant)</option>
+                </select>
+            </div>
+            <div class="flex items-center space-x-2 text-xs font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 px-3 py-1.5 rounded-md">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>FalkorDB Connected (127.0.0.1:6379)</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left Column: Case Overview & Provenance Traversal -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Living Case Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div>
+                        <span class="text-xs font-mono uppercase tracking-wider text-slate-400">Active Living Case</span>
+                        <h2 class="text-base font-semibold text-white">AetherLearn Minor Onboarding &amp; Parental Consent</h2>
+                    </div>
+                    <span class="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+                        Discrepancy Under Investigation
+                    </span>
+                </div>
+
+                <!-- Discovered Conflict & Bypass Evidence -->
+                <div class="mt-4 space-y-3" id="contradictionsContainer">
+                    <div class="text-xs text-slate-400 animate-pulse">Querying FalkorDB graph traversal...</div>
+                </div>
+            </div>
+
+            <!-- Graph Provenance Inspector -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                        <span>Graph Traversal &amp; Invalidation Path</span>
+                        <span class="text-xs font-normal text-slate-400">([:BYPASSES] &amp; [:DEPENDS_ON_PREMISE*1..4])</span>
+                    </h3>
+                    <button onclick="refreshState()" class="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 transition">
+                        Refresh Graph
+                    </button>
+                </div>
+                
+                <div id="graphVisualSummary" class="p-4 bg-slate-950 rounded-lg border border-slate-800/80 font-mono text-xs space-y-2">
+                    <!-- Dynamic Graph Visualization Tree -->
+                </div>
+            </div>
+
+            <!-- Unseen Document Ingestion Demo Panel -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white">General Unseen Document Ingestion</h3>
+                        <p class="text-xs text-slate-400">Tests non-fixture extraction with SHA-256 hash &amp; polarity classification</p>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">
+                        GENERAL_EXTRACTION
+                    </span>
+                </div>
+                <div class="space-y-3">
+                    <textarea id="unseenDocInput" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-200 font-mono focus:border-emerald-500 outline-none" placeholder="Paste unseen policy note, incident report, or engineering change..."></textarea>
+                    <div class="flex justify-between items-center">
+                        <button onclick="loadSampleIncident()" class="text-xs text-slate-400 hover:text-slate-200 underline">
+                            Insert Sample Incident (INC-9021)
+                        </button>
+                        <button onclick="submitUnseenDoc()" class="text-xs font-medium px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition">
+                            Ingest into Graph
+                        </button>
+                    </div>
+                    <div id="unseenResult" class="hidden p-3 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-slate-300">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Remediation, Behavioral Suite & Legal Timeline -->
+        <div class="space-y-6">
+
+            <!-- Guarded Remediation Action Proposal -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div>
+                        <span class="text-xs font-mono uppercase tracking-wider text-slate-400">Remediation Action</span>
+                        <h3 class="text-sm font-semibold text-white">Stored Proposal Approval Gate</h3>
+                    </div>
+                    <span id="proposalBadge" class="text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
+                        PROPOSAL_BOUND
+                    </span>
+                </div>
+
+                <div class="mt-4 space-y-3 text-xs">
+                    <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-1.5 font-mono">
+                        <div class="text-slate-400">Proposal ID: <span class="text-slate-200">PROP_REMED_01</span></div>
+                        <div class="text-slate-400">Target Claim: <span class="text-slate-200">CLM_VPC_01</span></div>
+                        <div class="text-slate-400">Action: <span class="text-emerald-400">Remove Guest Bypass &amp; Enforce Strict Handshake</span></div>
+                        <div class="text-slate-400">Revision: <span class="text-slate-200">REV_EV_ENG_8419_v1</span></div>
+                        <div class="text-slate-400">Governance: <span class="text-amber-400 font-semibold">Human Officer Approval Required</span></div>
+                    </div>
+
+                    <div id="patchActionBox" class="space-y-2 pt-2">
+                        <button id="applyPatchBtn" onclick="applyGuardedRemediation()" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg text-xs transition flex items-center justify-center gap-2">
+                            <span>Authorize &amp; Apply Guarded Patch</span>
+                        </button>
+                        <p class="text-[11px] text-slate-500 text-center">
+                            Validates lease fence token, idempotency key, and human officer signature before database commit.
+                        </p>
+                    </div>
+                    <div id="patchResultBox" class="hidden p-3 rounded-lg text-xs font-mono"></div>
+                </div>
+            </div>
+
+            <!-- Behavioral Test Runner (Synthetic 8-Case Suite) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-sm font-semibold text-white">Synthetic Behavioral Suite</h3>
+                        <p class="text-xs text-slate-400">8 synthetic signup test cases (Minors, Adults, Boundaries)</p>
+                    </div>
+                    <span id="suiteScore" class="text-xs px-2 py-0.5 rounded font-mono font-bold bg-slate-800 text-slate-300">
+                        Checking...
+                    </span>
+                </div>
+
+                <div id="suiteCases" class="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                    <!-- Dynamic test cases -->
+                </div>
+            </div>
+
+            <!-- DPDP Commencement Timeline -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-semibold text-white">DPDP Statutory Commencement</h3>
+                    <span class="text-[10px] text-slate-400 font-mono">Official Gazette</span>
+                </div>
+                <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 text-xs space-y-2">
+                    <div class="flex justify-between items-center text-slate-300">
+                        <span>Sec 9(1) (Parental Consent)</span>
+                        <span class="text-amber-400 font-mono">2027-05-14</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500">
+                        18 Months from publication. (Gazette dated 13 Nov 2025; upload barcode 14 Nov 2025). Status: <span class="text-amber-400">FUTURE_OBLIGATION</span>.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Client-Side Dashboard Logic -->
+    <script>
+        let csrfToken = null;
+
+        async function ensureAuth() {
+            let meRes = await fetch('/api/v1/auth/me');
+            let meData = await meRes.json();
+            if (!meData.authenticated) {
+                const loginRes = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: "officer_alice", password: "alice_secret_compliance_2026" })
+                });
+                meData = await loginRes.json();
+            }
+            csrfToken = meData.csrf_token;
+            if (document.getElementById('authUserName')) {
+                document.getElementById('authUserName').innerText = meData.name || meData.username;
+            }
+            return meData;
+        }
+
+        async function switchTenant(tenantId) {
+            await ensureAuth();
+            const res = await fetch('/api/v1/auth/switch-tenant', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ tenant_id: tenantId })
+            });
+            if (!res.ok) {
+                alert("Forbidden: User is not authorized for tenant " + tenantId);
+                return;
+            }
+            window.location.reload();
+        }
+
+        async function refreshState() {
+            const res = await fetch('/api/v1/tenant/state');
+            const data = await res.json();
+            
+            // Set dropdown value
+            document.getElementById('tenantSelect').value = data.tenant_id;
+
+            // Render Contradictions
+            const contBox = document.getElementById('contradictionsContainer');
+            if (!data.contradictions || data.contradictions.length === 0) {
+                contBox.innerHTML = '<div class="text-xs text-emerald-400 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">No active contradictions found for this tenant namespace. Zero leakage.</div>';
+            } else {
+                contBox.innerHTML = data.contradictions.map(c => `
+                    <div class="p-3 bg-slate-950 border border-rose-500/30 rounded-lg space-y-1.5">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-mono text-rose-400 font-semibold">[!] CONFLICT DETECTED: ${c.control_name}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 font-mono">DEGRADED_BYPASSED</span>
+                        </div>
+                        <div class="text-xs text-slate-300">Target Endpoint: <span class="font-mono text-emerald-400">${c.data_flow_endpoint}</span></div>
+                        <div class="text-xs text-slate-400">Supporting Policy: <span class="text-slate-200">${c.supporting_evidence.join(', ')}</span></div>
+                        <div class="text-xs text-rose-300/90">Contradictory Source: <span class="text-rose-200 font-mono">${c.contradictory_evidence.join(', ')}</span></div>
+                    </div>
+                `).join('');
+            }
+
+            // Render Graph Visual Summary
+            const graphBox = document.getElementById('graphVisualSummary');
+            let claimSummary = (data.claims || []).map(clm => `
+                <div class="p-2 border border-slate-800 rounded bg-slate-900/50">
+                    <div class="flex justify-between">
+                        <span class="text-slate-200 font-bold">${clm.claim_id} (${clm.provision_id})</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] ${clm.status === 'VALID_ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${clm.status}</span>
+                    </div>
+                    <div class="text-slate-400 text-[11px] mt-1">${clm.assertion}</div>
+                    ${clm.invalidation_history && clm.invalidation_history.length > 0 ? `
+                        <div class="mt-1 text-[10px] text-amber-400/90 border-t border-slate-800/80 pt-1">
+                            Invalidation Audit: ${clm.invalidation_history[0].reason}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+
+            const handshakeClass = data.vendor && data.vendor.strict_handshake ? 'text-emerald-400' : 'text-rose-400';
+            const bypassClass = data.contradictions && data.contradictions.length > 0 ? 'text-rose-400' : 'text-emerald-400';
+            const bypassCount = data.contradictions ? data.contradictions.length : 0;
+            const handshakeVal = data.vendor ? data.vendor.strict_handshake : false;
+
+            graphBox.innerHTML = `
+                <div class="text-slate-400 mb-1">// Active FalkorDB Claims for ${data.tenant_id}:</div>
+                <div class="space-y-2">${claimSummary}</div>
+                <div class="mt-3 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex justify-between">
+                    <span>Vendor Strict Handshake: <b class="${handshakeClass}">${handshakeVal}</b></span>
+                    <span>Active Bypasses: <b class="${bypassClass}">${bypassCount}</b></span>
+                </div>
+            `;
+
+            // Refresh Behavioral Suite
+            refreshBehavioralSuite();
+        }
+
+        async function refreshBehavioralSuite() {
+            const res = await fetch('/api/v1/tenant/behavioral-suite');
+            const data = await res.json();
+            const suite = data.suite_result;
+            
+            const badge = document.getElementById('suiteScore');
+            badge.innerText = `${suite.passed_cases} / ${suite.total_cases} PASSED`;
+            badge.className = `text-xs px-2 py-0.5 rounded font-mono font-bold ${suite.all_passed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`;
+
+            const casesBox = document.getElementById('suiteCases');
+            casesBox.innerHTML = suite.details.map(tc => `
+                <div class="p-2 rounded bg-slate-950 border border-slate-800/80 flex items-center justify-between text-xs">
+                    <div>
+                        <div class="font-mono text-slate-300 font-semibold">${tc.case_id}: ${tc.description}</div>
+                        <div class="text-[10px] text-slate-500">${tc.reason}</div>
+                    </div>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${tc.passed ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400 font-bold'}">
+                        ${tc.passed ? 'PASS' : 'FAIL'}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        async function applyGuardedRemediation() {
+            await ensureAuth();
+            const btn = document.getElementById('applyPatchBtn');
+            const resBox = document.getElementById('patchResultBox');
+            btn.disabled = true;
+            btn.innerText = "Requesting Server-Signed ApprovalRecord...";
+
+            // 1. Server generates single-use ApprovalRecord bound to current reviewer
+            const apprResp = await fetch('/api/v1/tenant/proposal/approve', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    proposal_id: "PROP_REMED_01",
+                    duration_sec: 300
+                })
+            });
+            const apprData = await apprResp.json();
+            if (!apprResp.ok) {
+                resBox.className = "p-3 rounded-lg text-xs font-mono bg-rose-500/10 text-rose-300 border border-rose-500/30";
+                resBox.style.display = "block";
+                resBox.innerText = "Approval Authorization Failed: " + JSON.stringify(apprData, null, 2);
+                btn.disabled = false;
+                btn.innerText = "Authorize & Apply Single-Query Remediation";
+                return;
+            }
+
+            const approvalToken = apprData.approval_token;
+            btn.innerText = "Executing Single-Query Atomic Cypher Mutation...";
+
+            // 2. Fetch current task lease
+            const leaseResp = await fetch('/api/v1/tenant/state');
+            const state = await leaseResp.json();
+            const task = (state.tasks || []).find(t => t.task_id === 'TSK_REMED_01');
+            const fence = (task ? task.fence_token : 0) + 1;
+
+            // 3. Post atomic patch
+            const res = await fetch('/api/v1/tenant/apply-patch', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    task_id: "TSK_REMED_01",
+                    proposal_id: "PROP_REMED_01",
+                    agent_id: "agent_worker_beta",
+                    fence_token: fence,
+                    idempotency_key: "IDEM-CONSOLE-" + Date.now(),
+                    human_approval_token: approvalToken,
+                    expected_evidence_revision: "REV_EV_ENG_8419_v1"
+                })
+            });
+
+            const result = await res.json();
+            resBox.className = "p-3 rounded-lg text-xs font-mono " + (res.ok ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" : "bg-rose-500/10 text-rose-300 border border-rose-500/30");
+            resBox.style.display = "block";
+            resBox.innerText = JSON.stringify(result, null, 2);
+
+            btn.innerText = res.ok ? "Patch Committed to FalkorDB" : "Remediation Rejected";
+            refreshState();
+        }
+
+        function loadSampleIncident() {
+            document.getElementById('unseenDocInput').value = 
+                "Incident INC-9021: Temporary hotfix on onboarding gateway skips guardian verification handshake for European test schools until next sprint release.";
+        }
+
+        async function submitUnseenDoc() {
+            await ensureAuth();
+            const text = document.getElementById('unseenDocInput').value;
+            if (!text) return;
+            const resBox = document.getElementById('unseenResult');
+            resBox.style.display = "block";
+            resBox.innerText = "Running Heuristic Keyword Extractor & SHA-256 Provenance...";
+
+            const res = await fetch('/api/v1/tenant/ingest-unseen-document', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    doc_type: "INCIDENT_REPORT",
+                    filename: "INC-9021.txt",
+                    content: text,
+                    target_control_id: "CTL_VPC_GATE"
+                })
+            });
+            const data = await res.json();
+            resBox.innerText = JSON.stringify(data, null, 2);
+            refreshState();
+        }
+
+        window.onload = refreshState;
+    </script>
+</body>
+</html>
