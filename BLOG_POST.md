@@ -171,7 +171,7 @@ Agent B then commits a new conclusion node linked to Session A via **`[:SUPERSED
 ## 7. Links & Resources
 
 - 💻 **GitHub Repository:** [https://github.com/AmanM006/mandate](https://github.com/AmanM006/mandate)
-- 🎥 **Demo Video:** [YouTube Video Link]
+- 🎥 **Demo Video:** [https://youtu.be/8QXf8TykYZc](https://youtu.be/8QXf8TykYZc)
 - ⚡ **Database:** [FalkorDB](https://falkordb.com/)
 
 *Built with Python 3.12, FastAPI, Tailwind CSS, and FalkorDB for the WeMakeDevs Graph Hacks Hackathon 2026.*
