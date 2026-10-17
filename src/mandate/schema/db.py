@@ -53,7 +53,9 @@ class FalkorClientManager:
                     conn_kwargs = {
                         "host": host,
                         "port": self.port,
-                        "password": self.password
+                        "password": self.password,
+                        "socket_timeout": 5.0,
+                        "socket_connect_timeout": 3.0
                     }
                     if self.username:
                         conn_kwargs["username"] = self.username
