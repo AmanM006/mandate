@@ -441,30 +441,60 @@
             }
 
             // Refresh Behavioral Suite
-            refreshBehavioralSuite();
+            if (suite) {
+                renderBehavioralSuite(suite);
+            } else {
+                refreshBehavioralSuite();
+            }
+        }
+
+        function renderBehavioralSuite(suite) {
+            const badge = document.getElementById('suiteScore');
+            if (!suite || !suite.details) {
+                if (badge) {
+                    badge.innerText = "DATA_UNAVAILABLE";
+                    badge.className = "text-xs px-2.5 py-0.5 rounded font-mono font-bold bg-zinc-900 text-zinc-400 border border-zinc-700";
+                }
+                return;
+            }
+            if (badge) {
+                badge.innerText = `${suite.passed_cases} / ${suite.total_cases} PASSED`;
+                badge.className = `text-xs px-2.5 py-0.5 rounded font-mono font-bold ${suite.all_passed ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-800/60' : 'bg-rose-950/70 text-rose-400 border border-rose-800/60'}`;
+            }
+
+            const casesBox = document.getElementById('suiteCases');
+            if (casesBox) {
+                casesBox.innerHTML = suite.details.map(tc => `
+                    <div class="p-2 rounded bg-black border border-zinc-900 flex items-center justify-between text-xs">
+                        <div>
+                            <div class="font-mono text-zinc-300 font-semibold">${tc.case_id}: <span class="font-sans font-normal text-zinc-400">${tc.description}</span></div>
+                            <div class="text-[10px] text-zinc-500 font-sans">${tc.reason}</div>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono ${tc.passed ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40' : 'bg-rose-950/60 text-rose-400 border border-rose-800/40 font-bold'}">
+                            ${tc.passed ? 'PASS' : 'FAIL'}
+                        </span>
+                    </div>
+                `).join('');
+            }
         }
 
         async function refreshBehavioralSuite() {
-            const res = await fetch('/api/v1/tenant/behavioral-suite');
-            const data = await res.json();
-            const suite = data.suite_result;
-            
-            const badge = document.getElementById('suiteScore');
-            badge.innerText = `${suite.passed_cases} / ${suite.total_cases} PASSED`;
-            badge.className = `text-xs px-2.5 py-0.5 rounded font-mono font-bold ${suite.all_passed ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-800/60' : 'bg-rose-950/70 text-rose-400 border border-rose-800/60'}`;
-
-            const casesBox = document.getElementById('suiteCases');
-            casesBox.innerHTML = suite.details.map(tc => `
-                <div class="p-2 rounded bg-black border border-zinc-900 flex items-center justify-between text-xs">
-                    <div>
-                        <div class="font-mono text-zinc-300 font-semibold">${tc.case_id}: <span class="font-sans font-normal text-zinc-400">${tc.description}</span></div>
-                        <div class="text-[10px] text-zinc-500 font-sans">${tc.reason}</div>
-                    </div>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-mono ${tc.passed ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40' : 'bg-rose-950/60 text-rose-400 border border-rose-800/40 font-bold'}">
-                        ${tc.passed ? 'PASS' : 'FAIL'}
-                    </span>
-                </div>
-            `).join('');
+            try {
+                await ensureAuth();
+                const res = await fetch('/api/v1/tenant/behavioral-suite');
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                const data = await res.json();
+                renderBehavioralSuite(data.suite_result);
+            } catch (err) {
+                console.error("Behavioral suite load error:", err);
+                const badge = document.getElementById('suiteScore');
+                if (badge) {
+                    badge.innerText = "OFFLINE";
+                    badge.className = "text-xs px-2.5 py-0.5 rounded font-mono font-bold bg-zinc-900 text-zinc-500 border border-zinc-800";
+                }
+            }
         }
 
         async function applyGuardedRemediation() {
