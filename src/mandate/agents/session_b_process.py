@@ -59,29 +59,61 @@ def run_agent_session_b():
     print(f"[{session_id}] Independent Billing Claim Status: status={res_bill[0][0]}, is_stale={res_bill[0][1]} [PRESERVED]")
     assert res_bill[0][0] == "VALID_ACTIVE" and res_bill[0][1] is False
 
-    # 5. Execute Remediation Patch: Apply allowlisted configuration
-    # Create valid server-signed ApprovalRecord
-    g.query("""
-    MERGE (prop:ActionProposal {proposal_id: 'PROP_REMED_01', tenant_id: 'aetherlearn'})
-    SET prop.status = 'APPROVED'
-    MERGE (t:Task {task_id: 'TSK_HANDOFF_01', tenant_id: 'aetherlearn'})
-    MERGE (t)-[:EXECUTES_PROPOSAL]->(prop)
-    """)
-    appr = tools.create_proposal_approval("aetherlearn", "PROP_REMED_01", "officer_alice", ["aetherlearn"])
+    # 5. Autonomous Action Proposal Creation:
+    # Notice that PRM_001 invalidation cascaded to PROP_REMED_01 (marked INELIGIBLE_SUPERSEDED).
+    # Rather than privileged mutation, Agent B drafts a fresh proposal PROP_REMED_02 tied to
+    # current active evidence REV_EV_ENG_8419_v1 to fix the bypass on DF_01.
+    print(f"[{session_id}] Drafting fresh proposal PROP_REMED_02 addressing current evidence...")
+    fresh_prop_id = "PROP_REMED_02"
+    q_create_prop = """
+    MATCH (clm:Claim {claim_id: 'CLM_VPC_01', tenant_id: 'aetherlearn'})
+    MATCH (ev:Evidence {evidence_id: 'EV_TICKET_ENG_8419', tenant_id: 'aetherlearn'})
+    MATCH (t:Task {task_id: 'TSK_HANDOFF_01', tenant_id: 'aetherlearn'})
+    CREATE (p:ActionProposal {
+        proposal_id: $prop_id,
+        tenant_id: 'aetherlearn',
+        target_claim_id: 'CLM_VPC_01',
+        target_vendor_id: 'VND_01',
+        target_flow_id: 'DF_01',
+        status: 'PENDING_APPROVAL',
+        enforce_strict_guardian_handshake: true,
+        remove_guest_bypass: true,
+        evidence_revision: ev.evidence_revision,
+        created_at: timestamp()
+    })
+    CREATE (p)-[:REMEDIES_CLAIM]->(clm)
+    CREATE (p)-[:BASED_ON_EVIDENCE]->(ev)
+    CREATE (t)-[:EXECUTES_PROPOSAL]->(p)
+    RETURN p.proposal_id, ev.evidence_revision
+    """
+    res_prop = g.query(q_create_prop, {"prop_id": fresh_prop_id}).result_set
+    assert len(res_prop) > 0, "Failed to create fresh proposal"
+    ev_rev = res_prop[0][1]
+    print(f"[{session_id}] Successfully created {fresh_prop_id} bound to evidence revision {ev_rev}.")
+
+    # 6. Request and obtain authenticated officer approval
+    print(f"[{session_id}] Submitting proposal to authenticated officer review flow...")
+    appr = tools.create_proposal_approval("aetherlearn", fresh_prop_id, "officer_alice", ["aetherlearn"])
+    assert appr["approval_token"] is not None
+    print(f"[{session_id}] Obtained officer approval: {appr['approval_token'][:25]}...")
+
+    # 7. Execute Remediation Patch: Apply allowlisted configuration via Atomic Cypher
+    print(f"[{session_id}] Applying remediation patch via strict atomic Cypher write...")
     apply_res = tools.apply_remediation_patch(
         tenant_id="aetherlearn",
         task_id="TSK_HANDOFF_01",
-        proposal_id="PROP_REMED_01",
+        proposal_id=fresh_prop_id,
         agent_id="agent_worker_b",
         fence_token=lease["fence_token"],
         idempotency_key=f"IDEM-PROC2-{uuid.uuid4().hex[:6]}",
         human_approval_token=appr["approval_token"],
-        expected_evidence_revision="REV_EV_ENG_8419_v1"
+        expected_evidence_revision=ev_rev
     )
     print(f"[{session_id}] Remediation Patch Execution Result: {apply_res}")
     assert apply_res["success"] is True
 
-    # 6. Fresh Decision Computation directly against live graph
+    # 8. Dynamic Decision Computation via Synthetic Behavioral Suite & Live Graph
+    print(f"[{session_id}] Evaluating post-patch controls against live graph...")
     q_eval = """
     MATCH (df:DataFlow {flow_id: 'DF_01', tenant_id: 'aetherlearn'})
     OPTIONAL MATCH (df)-[b:BYPASSES]->(ctl:Control)
@@ -93,15 +125,25 @@ def run_agent_session_b():
     active_bypasses, handshake = res_eval[0]
     print(f"[{session_id}] Graph State Evaluation: active_bypasses={active_bypasses}, handshake_enforced={handshake}")
 
-    # Compute verdict dynamically:
-    if active_bypasses == 0 and handshake is True:
+    # Run Synthetic Behavioral Test Runner to verify all 8 endpoint cases
+    from src.mandate.eval.behavioral_tests import SyntheticBehavioralTestRunner
+    runner = SyntheticBehavioralTestRunner()
+    guest_sso_bypass_active = (active_bypasses > 0)
+    behavioral_report = runner.evaluate(
+        vendor_strict_handshake=bool(handshake),
+        guest_sso_bypass=guest_sso_bypass_active
+    )
+    print(f"[{session_id}] Synthetic Behavioral Suite: {behavioral_report['passed_cases']}/{behavioral_report['total_cases']} passed.")
+
+    # Compute verdict dynamically strictly from live verification results:
+    if behavioral_report["all_passed"] and active_bypasses == 0 and handshake is True:
         computed_verdict = "MODELED_CONTROL_TESTS_PASS"
     else:
         computed_verdict = "FAILING_CONTROLS_DETECTED"
 
     print(f"[{session_id}] Dynamically Calculated Revised Verdict: {computed_verdict} (Previous: {prior_verdict})")
 
-    # 7. Persist Revised Assessment Conclusion into FalkorDB
+    # 9. Persist Revised Assessment Conclusion into FalkorDB with SUPERSEDES edge
     q_persist_revised = """
     MATCH (clm:Claim {claim_id: 'CLM_VPC_01', tenant_id: 'aetherlearn'})
     CREATE (c:AssessmentConclusion {
@@ -112,11 +154,13 @@ def run_agent_session_b():
         verdict: $verdict,
         active_bypasses: $bypasses,
         supersedes_conclusion: $prev_cid,
+        behavioral_suite_passed: $all_pass,
         created_at: timestamp(),
         status: 'ACTIVE_RECORD'
     })
-    MERGE (c)-[:REVISED_EVALUATION_OF]->(clm)
-    SET clm.status = 'MODELED_CONTROL_TESTS_PASS',
+    CREATE (c)-[:REVISED_EVALUATION_OF]->(clm)
+    CREATE (c)-[:SUPERSEDES]->(prior:AssessmentConclusion {conclusion_id: $prev_cid})
+    SET clm.status = $verdict,
         clm.is_stale = false
     RETURN c.conclusion_id, c.verdict
     """
@@ -126,7 +170,8 @@ def run_agent_session_b():
         "sid": session_id,
         "verdict": computed_verdict,
         "bypasses": active_bypasses,
-        "prev_cid": prior_conc
+        "prev_cid": prior_conc,
+        "all_pass": behavioral_report["all_pass" if "all_pass" in behavioral_report else "all_passed"]
     }).result_set
     print(f"[{session_id}] Persisted Revised Conclusion node '{res_new[0][0]}' with verdict '{res_new[0][1]}' into FalkorDB.")
 
