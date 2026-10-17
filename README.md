@@ -4,6 +4,8 @@
 - **Track 2: Multi-Agent Architectures & Memory**
 - **Track 3: Human-in-the-Loop & Interactive Systems**
 
+🚀 **Live Deployment**: [https://mandate-singapore.onrender.com](https://mandate-singapore.onrender.com) (Connected live to FalkorDB Cloud `ap-south-1`)
+
 ---
 
 ## 1. Graph Data Model & Cypher Implementation
