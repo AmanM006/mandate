@@ -123,6 +123,23 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
     MERGE (ev_ticket)-[:CONTRADICTS]->(ctl_vpc)
     MERGE (df_signup)-[:BYPASSES]->(ctl_vpc)
 
+    // Additional Evidence for Content Moderation (TC-04)
+    MERGE (ctl_mod:Control {control_id: 'CTL_CONTENT_MOD', tenant_id: $tenant_id})
+    SET ctl_mod.name = 'Automated Content Moderation & Harm Prevention Gate',
+        ctl_mod.status = 'ACTIVE_VERIFIED'
+    MERGE (ev_mod:Evidence {evidence_id: 'EV_MODSAFE_01', tenant_id: $tenant_id})
+    SET ev_mod.type = 'AUDIT_LOG',
+        ev_mod.title = 'ModSafe Automated Filtering Verification',
+        ev_mod.content_summary = 'Confirmed active filtering of harmful content across student discussion boards.'
+    MERGE (ev_mod)-[:SUPPORTS]->(ctl_mod)
+
+    // Historical Architecture Decision Superseded (TC-08)
+    MERGE (dec_arch:InternalDecision {decision_id: 'DEC_2025_08_ARCH', tenant_id: $tenant_id})
+    SET dec_arch.title = 'Architectural Decision Record: Mandatory KiddCheck v1.4 Gate',
+        dec_arch.status = 'SUPERSEDED',
+        dec_arch.superseded_by = 'ENG-8419'
+    MERGE (ev_ticket)-[:SUPERSEDES_DECISION]->(dec_arch)
+
     // 7. Premises, Claims & Dependency Chains
     MERGE (prm_vpc:Premise {premise_id: 'PRM_001', tenant_id: $tenant_id})
     SET prm_vpc.statement = 'All student registrations are strictly verified by KiddCheck ID before profile activation.',
@@ -148,6 +165,52 @@ def seed_flagship_aetherlearn(db_mgr: FalkorClientManager, tenant_id: str = "aet
         clm_enc.status = 'VALID_ACTIVE',
         clm_enc.is_stale = false
     MERGE (clm_enc)-[:DEPENDS_ON_PREMISE]->(prm_enc)
+
+    // Content Moderation Claim (TC-04)
+    MERGE (clm_mod:Claim {claim_id: 'CLM_MOD_01', tenant_id: $tenant_id})
+    SET clm_mod.provision_id = 'DPDP_ACT_SEC_9_2',
+        clm_mod.assertion = 'Automated filtering ensures student protection against harmful content.',
+        clm_mod.status = 'VALID_ACTIVE',
+        clm_mod.is_stale = false
+    MERGE (clm_mod)-[:EVALUATES_CLAIM]->(ctl_mod)
+
+    // Uncertain Claim: TrackPulse Cadence Telemetry (TC-03)
+    // Under Section 9(3), educational analytics vs commercial tracking is genuinely unresolved
+    MERGE (clm_telemetry:Claim {claim_id: 'CLM_TELEM_01', tenant_id: $tenant_id})
+    SET clm_telemetry.provision_id = 'DPDP_ACT_SEC_9_3',
+        clm_telemetry.assertion = 'Student keystroke analytics for pedagogical progress tracking.',
+        clm_telemetry.status = 'VALID_ACTIVE',
+        clm_telemetry.applicability = 'UNRESOLVED_UNCERTAIN',
+        clm_telemetry.is_stale = false
+
+    // Claims with missing evidence (TC-11, TC-12, TC-13, TC-14)
+    MERGE (clm_retention:Claim {claim_id: 'CLM_RETENTION_01', tenant_id: $tenant_id})
+    SET clm_retention.provision_id = 'VENDOR_DATA_RETENTION',
+        clm_retention.assertion = 'Vendor contract enforces automated data erasure upon contract termination.',
+        clm_retention.status = 'VALID_ACTIVE',
+        clm_retention.evidence_status = 'INSUFFICIENT_EVIDENCE',
+        clm_retention.is_stale = false
+
+    MERGE (clm_withdraw:Claim {claim_id: 'CLM_WITHDRAW_01', tenant_id: $tenant_id})
+    SET clm_withdraw.provision_id = 'DPDP_ACT_SEC_6_4',
+        clm_withdraw.assertion = 'Consent withdrawal API endpoint operational in API gateway.',
+        clm_withdraw.status = 'VALID_ACTIVE',
+        clm_withdraw.evidence_status = 'INSUFFICIENT_EVIDENCE',
+        clm_withdraw.is_stale = false
+
+    MERGE (clm_dpo:Claim {claim_id: 'CLM_DPO_01', tenant_id: $tenant_id})
+    SET clm_dpo.provision_id = 'DPDP_RULES_2025_RULE_9',
+        clm_dpo.assertion = 'Designated DPO appointment published and active.',
+        clm_dpo.status = 'VALID_ACTIVE',
+        clm_dpo.evidence_status = 'INSUFFICIENT_EVIDENCE',
+        clm_dpo.is_stale = false
+
+    MERGE (clm_xborder:Claim {claim_id: 'CLM_XBORDER_01', tenant_id: $tenant_id})
+    SET clm_xborder.provision_id = 'DPDP_ACT_SEC_16',
+        clm_xborder.assertion = 'AWS Singapore backup replication complies with central government cross-border rules.',
+        clm_xborder.status = 'VALID_ACTIVE',
+        clm_xborder.evidence_status = 'INSUFFICIENT_EVIDENCE',
+        clm_xborder.is_stale = false
 
     // 8. Invalidation History Event (Preserving Audit Trail)
     MERGE (inval_evt:InvalidationEvent {event_id: 'INVAL_EVT_001', tenant_id: $tenant_id})
@@ -243,6 +306,11 @@ def seed_isolated_nexusops(db_mgr: FalkorClientManager, tenant_id: str = "nexuso
         df_syslog.protocol = 'TCP/TLS',
         df_syslog.description = 'Enterprise cluster log ingestion'
 
+    MERGE (cat_syslog:DataCategory {category_id: 'CAT_SERVER_LOGS', tenant_id: $tenant_id})
+    SET cat_syslog.name = 'Server Metrics & Enterprise Syslog',
+        cat_syslog.is_child_data = false
+    MERGE (df_syslog)-[:PROCESSES]->(cat_syslog)
+
     MERGE (df_intern:DataFlow {flow_id: 'DF_103', tenant_id: $tenant_id})
     SET df_intern.endpoint = '/api/v1/intern-seats',
         df_intern.protocol = 'HTTPS/REST',
@@ -257,6 +325,13 @@ def seed_isolated_nexusops(db_mgr: FalkorClientManager, tenant_id: str = "nexuso
     SET clm_b2b.provision_id = 'DPDP_ACT_SEC_4',
         clm_b2b.status = 'VALID_ACTIVE',
         clm_b2b.assertion = 'NexusOps standard log processing is lawful under enterprise customer contracts.'
+
+    MERGE (clm_intern:Claim {claim_id: 'CLM_NEXUS_INTERN', tenant_id: $tenant_id})
+    SET clm_intern.provision_id = 'NEXUS_ENTERPRISE_INTERN_FLOW',
+        clm_intern.status = 'VALID_ACTIVE',
+        clm_intern.applicability = 'UNRESOLVED_UNCERTAIN',
+        clm_intern.target_flow_id = 'DF_103',
+        clm_intern.assertion = 'High school apprentice seats provisioned by corporate customer require guardian consent assessment.'
     """
     g.query(query, {"tenant_id": tenant_id})
     print(f"Seeded {tenant_id} isolated graph successfully.")

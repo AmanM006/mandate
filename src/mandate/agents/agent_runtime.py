@@ -154,46 +154,57 @@ class GeminiAgentRuntime:
         self,
         tenant_id: str,
         task_id: str,
-        worker_id: str
+        worker_id: str,
+        human_approval_token: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Acquires a fenced task lease, proposes a configuration patch,
-        and applies it under strict fence token and idempotency protection.
+        Acquires a fenced task lease, retrieves the target proposal associated with the task,
+        and applies the atomic Cypher remediation patch under strict fence token and
+        server-issued single-use human approval protection.
         """
         lease = self.tools.acquire_task_lease(tenant_id, task_id, worker_id)
         if not lease:
             return {"success": False, "reason": "UNABLE_TO_ACQUIRE_LEASE"}
 
-        # Proposed remediation configuration
-        patch_payload = {
-            "vendor_id": "VND_01",
-            "enforce_strict_guardian_handshake": True,
-            "disable_guest_sso_bypass": True
-        }
+        # Retrieve proposal bound to this task
+        g = self.db_mgr.get_tenant_graph(tenant_id)
+        q_prop = """
+        MATCH (t:Task {task_id: $task_id, tenant_id: $tenant_id})-[:EXECUTES_PROPOSAL]->(p:ActionProposal)
+        RETURN p.proposal_id, p.evidence_revision, p.status
+        """
+        res_prop = g.ro_query(q_prop, {"task_id": task_id, "tenant_id": tenant_id}).result_set
+        if not res_prop:
+            return {"success": False, "reason": "NO_PROPOSAL_BOUND_TO_TASK", "task_id": task_id}
 
-        # Apply patch with fence verification
+        proposal_id, ev_rev, prop_status = res_prop[0]
+
+        # Guarded check: Remediator agent cannot execute without a valid server-issued human approval record
+        if not human_approval_token:
+            return {
+                "success": False,
+                "reason": "HUMAN_APPROVAL_REQUIRED",
+                "proposal_id": proposal_id,
+                "proposal_status": prop_status,
+                "fence_token": lease["fence_token"]
+            }
+
+        # Apply single-query atomic Cypher remediation patch
         apply_res = self.tools.apply_remediation_patch(
             tenant_id=tenant_id,
             task_id=task_id,
+            proposal_id=proposal_id,
             agent_id=worker_id,
             fence_token=lease["fence_token"],
             idempotency_key=f"IDEM-{worker_id}-{task_id}",
-            patch_payload=patch_payload
+            human_approval_token=human_approval_token,
+            expected_evidence_revision=ev_rev
         )
 
-        # Complete task if patch succeeded
-        if apply_res.get("success"):
-            self.tools.complete_task(
-                tenant_id=tenant_id,
-                task_id=task_id,
-                agent_id=worker_id,
-                fence_token=lease["fence_token"],
-                idempotency_key=f"IDEM-{worker_id}-{task_id}"
-            )
-
         return {
+            "success": apply_res.get("success", False),
             "worker_id": worker_id,
             "task_id": task_id,
+            "proposal_id": proposal_id,
             "fence_token": lease["fence_token"],
             "patch_result": apply_res
         }

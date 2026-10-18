@@ -86,32 +86,28 @@ def run_browser_flow():
     q_create = """
     MATCH (clm:Claim {claim_id: 'CLM_VPC_01', tenant_id: 'aetherlearn'})
     MATCH (ev:Evidence {evidence_id: 'EV_TICKET_ENG_8419', tenant_id: 'aetherlearn'})
-    CREATE (t_ui:Task {
-        task_id: 'TSK_BROWSER_REMED_01',
-        tenant_id: 'aetherlearn',
-        type: 'APPLY_REMEDIATION',
-        status: 'OPEN',
-        lease_version: 0,
-        retry_count: 0,
-        handoff_from_session: 'SES_B_VERIFY',
-        target_claim_id: 'CLM_VPC_01',
-        created_at: timestamp()
-    })
-    CREATE (p:ActionProposal {
-        proposal_id: 'PROP_REMED_02',
-        tenant_id: 'aetherlearn',
-        target_claim_id: 'CLM_VPC_01',
-        target_vendor_id: 'VND_01',
-        target_flow_id: 'DF_01',
-        status: 'PENDING_APPROVAL',
-        enforce_strict_guardian_handshake: true,
-        remove_guest_bypass: true,
-        evidence_revision: ev.evidence_revision,
-        created_at: timestamp()
-    })
-    CREATE (p)-[:REMEDIES_CLAIM]->(clm)
-    CREATE (p)-[:BASED_ON_EVIDENCE]->(ev)
-    CREATE (t_ui)-[:EXECUTES_PROPOSAL]->(p)
+    MERGE (t_ui:Task {task_id: 'TSK_BROWSER_REMED_01', tenant_id: 'aetherlearn'})
+    SET t_ui.type = 'APPLY_REMEDIATION',
+        t_ui.status = 'OPEN',
+        t_ui.lease_version = 0,
+        t_ui.retry_count = 0,
+        t_ui.owner_agent = null,
+        t_ui.lease_expires_at = null,
+        t_ui.handoff_from_session = 'SES_B_VERIFY',
+        t_ui.target_claim_id = 'CLM_VPC_01',
+        t_ui.created_at = timestamp()
+    MERGE (p:ActionProposal {proposal_id: 'PROP_REMED_02', tenant_id: 'aetherlearn'})
+    SET p.target_claim_id = 'CLM_VPC_01',
+        p.target_vendor_id = 'VND_01',
+        p.target_flow_id = 'DF_01',
+        p.status = 'PENDING_APPROVAL',
+        p.enforce_strict_guardian_handshake = true,
+        p.remove_guest_bypass = true,
+        p.evidence_revision = ev.evidence_revision,
+        p.created_at = timestamp()
+    MERGE (p)-[:REMEDIES_CLAIM]->(clm)
+    MERGE (p)-[:BASED_ON_EVIDENCE]->(ev)
+    MERGE (t_ui)-[:EXECUTES_PROPOSAL]->(p)
     RETURN p.proposal_id, ev.evidence_revision, t_ui.task_id
     """
     res_prop = g.query(q_create).result_set

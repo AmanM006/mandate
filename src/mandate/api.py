@@ -160,6 +160,9 @@ class TaskLeaseRequest(BaseModel):
     agent_id: str
     duration_ms: Optional[int] = 15000
 
+class AskMandateRequest(BaseModel):
+    question: str
+
 # -------------------------------------------------------------
 # AUTHENTICATION & APPROVAL ENDPOINTS
 # -------------------------------------------------------------
@@ -327,6 +330,25 @@ def get_tenant_full_state(tenant_id: str = Depends(get_tenant_from_session_or_ke
         q_vendor = "MATCH (v:Vendor {vendor_id: 'VND_01', tenant_id: $tenant_id}) RETURN v.vendor_id, v.name, v.enforce_strict_guardian_handshake"
         res_v = g.ro_query(q_vendor, {"tenant_id": tenant_id}).result_set
         vendor = {"vendor_id": res_v[0][0], "name": res_v[0][1], "strict_handshake": res_v[0][2]} if res_v else None
+
+        q_conclusions = """
+        MATCH (c:AssessmentConclusion {tenant_id: $tenant_id})
+        OPTIONAL MATCH (c)-[:SUPERSEDES]->(prior:AssessmentConclusion)
+        RETURN c.conclusion_id, c.session_id, c.verdict, c.agent_id, c.created_at, prior.conclusion_id, prior.verdict
+        ORDER BY c.created_at ASC
+        """
+        res_conc = g.ro_query(q_conclusions, {"tenant_id": tenant_id}).result_set
+        conclusions = []
+        for rc in res_conc:
+            conclusions.append({
+                "conclusion_id": rc[0],
+                "session_id": rc[1],
+                "verdict": rc[2],
+                "agent_id": rc[3],
+                "created_at": rc[4],
+                "supersedes": rc[5],
+                "prior_verdict": rc[6]
+            })
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -344,7 +366,8 @@ def get_tenant_full_state(tenant_id: str = Depends(get_tenant_from_session_or_ke
         "vendor": vendor,
         "contradictions": contradictions,
         "claims": claims,
-        "tasks": tasks
+        "tasks": tasks,
+        "case_history": conclusions
     }
 
 @app.get("/api/v1/tenant/contradictions")
@@ -406,7 +429,8 @@ def run_behavioral_suite(tenant_id: str = Depends(get_tenant_from_session_or_key
 @app.post("/api/v1/tenant/ingest-unseen-document")
 def ingest_unseen_doc(
     req: UnseenDocumentRequest,
-    tenant_id: str = Depends(get_tenant_from_session_or_key)
+    tenant_id: str = Depends(get_tenant_from_session_or_key),
+    _csrf: None = Depends(verify_csrf_write_protection)
 ):
     result = pipeline.ingest_unseen_document(
         tenant_id=tenant_id,
@@ -420,7 +444,12 @@ def ingest_unseen_doc(
 @app.get("/api/v1/legal/provisions")
 def get_legal_provisions():
     g_pub = db_mgr.get_public_graph()
-    q = "MATCH (p:LegalProvision) RETURN p.provision_id, p.section, p.title, p.legal_status, p.effective_from, p.commencement_basis"
+    q = """
+    MATCH (p:Provision)
+    OPTIONAL MATCH (p)-[:GOVERNED_BY]->(c:Commencement)
+    RETURN p.provision_id, coalesce(p.section_number, p.section, p.provision_id),
+           p.title, p.legal_status, c.effective_from, c.basis
+    """
     res = g_pub.ro_query(q).result_set
     provisions = []
     for r in res:
@@ -429,8 +458,8 @@ def get_legal_provisions():
             "section": r[1],
             "title": r[2],
             "legal_status": r[3],
-            "effective_from": r[4],
-            "commencement_basis": r[5]
+            "effective_from": r[4] or "IN_FORCE",
+            "commencement_basis": r[5] or "Statutory Law"
         })
     return {"provisions": provisions}
 
@@ -458,6 +487,37 @@ def get_claim(
         "is_stale": res[0][2],
         "invalidation_history": res[0][3]
     }
+
+@app.post("/api/v1/tenant/ask")
+def ask_mandate_endpoint(
+    req: AskMandateRequest,
+    tenant_id: str = Depends(get_tenant_from_session_or_key)
+):
+    """
+    Company Brain Interrogation Endpoint:
+    Traverses FalkorDB graph to answer compliance queries with verifiable source IDs,
+    evidence paths, and statutory commencement timelines.
+    """
+    ans = tools.ask_mandate(tenant_id=tenant_id, question=req.question)
+    return ans
+
+@app.post("/api/v1/tenant/reset")
+def reset_tenant_endpoint(
+    session: Optional[Dict[str, Any]] = Depends(get_current_session),
+    tenant_id: str = Depends(get_tenant_from_session_or_key),
+    _csrf: None = Depends(verify_csrf_write_protection)
+):
+    """
+    Resets the active tenant graph back to the clean baseline without disrupting other tenants.
+    """
+    from src.mandate.schema.seed_tenants import seed_flagship_aetherlearn, seed_isolated_nexusops
+    if tenant_id == "aetherlearn":
+        seed_flagship_aetherlearn(db_mgr, tenant_id=tenant_id)
+    elif tenant_id == "nexusops":
+        seed_isolated_nexusops(db_mgr, tenant_id=tenant_id)
+    else:
+        raise HTTPException(status_code=400, detail="UNKNOWN_TENANT_FOR_RESET")
+    return {"status": "SUCCESS", "tenant_id": tenant_id, "message": f"Tenant '{tenant_id}' reset to clean baseline."}
 
 # -------------------------------------------------------------
 # WEB CONSOLE HTML SERVING

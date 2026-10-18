@@ -188,6 +188,26 @@ def seed_regulatory_corpus(db_mgr: FalkorClientManager):
         p_17_2_b.legal_status = 'IN_FORCE',
         p_17_2_b.source_ref = 'Act No. 22 of 2023, s. 17(2)(b)'
 
+    MERGE (p_6_4:Provision {provision_id: 'DPDP_ACT_SEC_6_4'})
+    SET p_6_4.section_number = '6(4)',
+        p_6_4.title = 'Withdrawal of Consent with Ease Comparable to Giving Consent',
+        p_6_4.official_text = 'The Data Principal shall have the right to withdraw her consent at any time, with the ease of doing so being comparable to the ease with which such consent was given.',
+        p_6_4.legal_status = 'FUTURE_OBLIGATION',
+        p_6_4.source_ref = 'Act No. 22 of 2023, s. 6(4)'
+    WITH p_6_4
+    MATCH (c:Commencement {commencement_id: 'COMM_18_MONTHS'})
+    MERGE (p_6_4)-[:GOVERNED_BY]->(c)
+
+    MERGE (p_4:Provision {provision_id: 'DPDP_ACT_SEC_4'})
+    SET p_4.section_number = '4',
+        p_4.title = 'Grounds for Processing Personal Data',
+        p_4.official_text = 'A person may process the personal data of an individual only in accordance with the provisions of this Act and for a lawful purpose for which consent has been given or for certain legitimate uses.',
+        p_4.legal_status = 'FUTURE_OBLIGATION',
+        p_4.source_ref = 'Act No. 22 of 2023, s. 4'
+    WITH p_4
+    MATCH (c:Commencement {commencement_id: 'COMM_18_MONTHS'})
+    MERGE (p_4)-[:GOVERNED_BY]->(c)
+
     MERGE (p_17_3:Provision {provision_id: 'DPDP_ACT_SEC_17_3'})
     SET p_17_3.section_number = '17(3)',
         p_17_3.title = 'Exemptions for Notified Classes of Startups',
