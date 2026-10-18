@@ -10,12 +10,12 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.0
       - key: FALKORDB_HOST
-        value: "REDACTED_FALKORDB_HOST"
+        sync: false
       - key: FALKORDB_PORT
-        value: "6379"
+        sync: false
       - key: FALKORDB_USERNAME
-        value: "falkordb"
+        sync: false
       - key: FALKORDB_PASSWORD
-        value: "REDACTED_PASSWORD"
+        sync: false
       - key: GEMINI_API_KEY
         sync: false

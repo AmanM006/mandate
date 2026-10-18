@@ -15,11 +15,10 @@ class FalkorClientManager:
         password: Optional[str] = None,
         username: Optional[str] = None
     ):
-        cloud_host = "REDACTED_FALKORDB_HOST"
-        self.host = host or os.getenv("FALKORDB_HOST", cloud_host if os.getenv("RENDER") else "127.0.0.1")
-        self.port = int(port or os.getenv("FALKORDB_PORT", 6379 if os.getenv("RENDER") or self.host == cloud_host else 6379))
-        self.password = password or os.getenv("FALKORDB_PASSWORD", "REDACTED_PASSWORD" if (os.getenv("RENDER") or self.host == cloud_host) else None)
-        self.username = username or os.getenv("FALKORDB_USERNAME", "falkordb" if (os.getenv("RENDER") or self.host == cloud_host) else None)
+        self.host = host or os.getenv("FALKORDB_HOST", "127.0.0.1")
+        self.port = int(port or os.getenv("FALKORDB_PORT", 6379))
+        self.password = password or os.getenv("FALKORDB_PASSWORD", None)
+        self.username = username or os.getenv("FALKORDB_USERNAME", None)
         
         self._client = None
 
@@ -63,31 +62,33 @@ class FalkorClientManager:
                     cl = FalkorDB(**conn_kwargs)
                     cl.connection.ping()
                     self._client = cl
-                    self.host = host
                     return self._client
                 except Exception as e:
                     last_err = e
                     import time
                     time.sleep(0.05)
 
-        # Fallback to FalkorDB Cloud if local connection failed and not already targeting cloud
-        cloud_host = "REDACTED_FALKORDB_HOST"
-        if self.host != cloud_host:
+        # Fallback to FalkorDB Cloud if local connection failed and cloud environment variables are configured
+        cloud_host = os.getenv("FALKORDB_CLOUD_HOST")
+        cloud_pwd = os.getenv("FALKORDB_CLOUD_PASSWORD")
+        if cloud_host and cloud_pwd and self.host != cloud_host:
             try:
+                cloud_port = int(os.getenv("FALKORDB_CLOUD_PORT", 6379))
+                cloud_user = os.getenv("FALKORDB_CLOUD_USER", "falkordb")
                 cl = FalkorDB(
                     host=cloud_host,
-                    port=6379,
-                    username="falkordb",
-                    password="REDACTED_PASSWORD",
+                    port=cloud_port,
+                    username=cloud_user,
+                    password=cloud_pwd,
                     socket_timeout=10.0,
                     socket_connect_timeout=6.0
                 )
                 cl.connection.ping()
                 self._client = cl
                 self.host = cloud_host
-                self.port = 6379
-                self.username = "falkordb"
-                self.password = "REDACTED_PASSWORD"
+                self.port = cloud_port
+                self.username = cloud_user
+                self.password = cloud_pwd
                 return self._client
             except Exception as e:
                 last_err = e
